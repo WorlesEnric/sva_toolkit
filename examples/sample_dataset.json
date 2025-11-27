@@ -1,0 +1,32 @@
+[
+  {
+    "SVA": "property ReqAckHandshake;\n  @(posedge clk) disable iff (!rst_n)\n  req |-> ##[1:3] ack;\nendproperty\nassert property (ReqAckHandshake);"
+  },
+  {
+    "SVA": "property DataStable;\n  @(posedge clk) disable iff (!rst_n)\n  valid |-> $stable(data) until ack;\nendproperty\nassert property (DataStable);"
+  },
+  {
+    "SVA": "property FifoNotOverflow;\n  @(posedge clk) disable iff (!rst_n)\n  (count == MAX_DEPTH) |-> !push;\nendproperty\nassert property (FifoNotOverflow);"
+  },
+  {
+    "SVA": "property OneHotState;\n  @(posedge clk) disable iff (!rst_n)\n  $onehot(state);\nendproperty\nassert property (OneHotState);"
+  },
+  {
+    "SVA": "property RiseAckOnReq;\n  @(posedge clk) disable iff (!rst_n)\n  $rose(req) |=> ##[0:5] $rose(ack);\nendproperty\nassert property (RiseAckOnReq);"
+  },
+  {
+    "SVA": "property ErrorFlageotid;\n  ( status_output_buffer_12 ) == ( 2'h2 ) |=> fsm_7 == err_20 ;\nendproperty\nassert property (@(posedge clk) ErrorFlageotid);"
+  },
+  {
+    "SVA": "property BurstLength;\n  @(posedge clk) disable iff (!rst_n)\n  (burst_start && burst_len == 4) |-> (valid)[*4] ##1 burst_done;\nendproperty\nassert property (BurstLength);"
+  },
+  {
+    "SVA": "property NoBackToBackReq;\n  @(posedge clk) disable iff (!rst_n)\n  req |=> !req;\nendproperty\nassert property (NoBackToBackReq);"
+  },
+  {
+    "SVA": "property GrantWithinN;\n  @(posedge clk) disable iff (!rst_n)\n  req |-> ##[1:10] gnt;\nendproperty\nassert property (GrantWithinN);"
+  },
+  {
+    "SVA": "property ReadDataValid;\n  @(posedge clk) disable iff (!rst_n)\n  (read_en && !empty) |=> data_valid;\nendproperty\nassert property (ReadDataValid);"
+  }
+]

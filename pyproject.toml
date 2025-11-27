@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sva-toolkit"
+version = "0.1.0"
+description = "A toolkit for SVA generation, validation, and LLM training"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "SVA Toolkit Authors"}
+]
+dependencies = [
+    "click>=8.0.0",
+    "jinja2>=3.0.0",
+    "openai>=1.0.0",
+    "rich>=13.0.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.scripts]
+sva-ast = "sva_toolkit.ast_parser.cli:main"
+sva-implication = "sva_toolkit.implication_checker.cli:main"
+sva-cot = "sva_toolkit.cot_builder.cli:main"
+sva-dataset = "sva_toolkit.dataset_builder.cli:main"
+sva-benchmark = "sva_toolkit.benchmark.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

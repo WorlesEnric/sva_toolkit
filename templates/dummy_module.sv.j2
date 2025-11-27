@@ -1,0 +1,46 @@
+{# Template for generating a dummy RTL module for SVA verification #}
+module {{ module_name }} (
+    input wire clk,
+    input wire rst_n,
+{% for signal in signals %}
+    input wire {{ signal.width_str }}{{ signal.name }}{% if not loop.last %},{% endif %}
+
+{% endfor %}
+);
+
+    // Free-running signals for formal verification
+    // All signals are inputs driven by the formal engine
+
+{% if properties %}
+{% for prop in properties %}
+    // Property: {{ prop.name }}
+    {{ prop.code }}
+
+{% endfor %}
+{% endif %}
+
+{% if assertions %}
+{% for assertion in assertions %}
+    // Assertion
+    {{ assertion }}
+
+{% endfor %}
+{% endif %}
+
+{% if assumptions %}
+{% for assumption in assumptions %}
+    // Assumption
+    {{ assumption }}
+
+{% endfor %}
+{% endif %}
+
+{% if covers %}
+{% for cover in covers %}
+    // Cover
+    {{ cover }}
+
+{% endfor %}
+{% endif %}
+
+endmodule
