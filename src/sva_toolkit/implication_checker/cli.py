@@ -4,9 +4,11 @@ CLI for SVA Implication Checker.
 
 import click
 import json
+from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
 from rich.markup import escape
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from sva_toolkit.implication_checker.checker import (
     SVAImplicationChecker,
@@ -142,6 +144,122 @@ def relationship(ctx, sva1, sva2, json_output):
                 
     except Exception as e:
         console.print(f"[red]Error during verification:[/red] {escape(str(e))}")
+        raise click.Abort()
+
+
+@main.command()
+@click.option('--input-file', '-i', required=True, type=click.Path(exists=True), help='Input JSON file with list of SVA pairs')
+@click.option('--output-file', '-o', default=None, type=click.Path(), help='Output JSON file (default: stdout)')
+@click.option('--verbose', '-v', is_flag=True, help='Show progress and detailed logs')
+@click.pass_context
+def batch_equivalent(ctx, input_file, output_file, verbose):
+    """Batch process equivalence checks from a JSON file containing a list of SVA pairs.
+    
+    Expected JSON format:
+    [
+        {"id": "id1", "sva1": "...", "sva2": "..."},
+        {"id": "id2", "sva1": "...", "sva2": "..."},
+        ...
+    ]
+    """
+    checker = ctx.obj['checker']
+    
+    try:
+        # Read input JSON file
+        input_path = Path(input_file)
+        with open(input_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        if not isinstance(data, list):
+            console.print("[red]Error: Input JSON must be a list of dictionaries[/red]")
+            raise click.Abort()
+        
+        if verbose:
+            console.print(f"[bold]Processing {len(data)} SVA pairs from {input_file}[/bold]\n")
+        
+        results = []
+        total = len(data)
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            disable=not verbose
+        ) as progress:
+            task = progress.add_task("Processing...", total=total)
+            
+            for idx, entry in enumerate(data, 1):
+                if not isinstance(entry, dict):
+                    console.print(f"[yellow]Warning: Entry {idx} is not a dictionary, skipping[/yellow]")
+                    continue
+                
+                entry_id = entry.get('id', f'entry_{idx}')
+                sva1 = entry.get('sva1')
+                sva2 = entry.get('sva2')
+                
+                if not sva1 or not sva2:
+                    console.print(f"[yellow]Warning: Entry {entry_id} missing sva1 or sva2, skipping[/yellow]")
+                    continue
+                
+                if verbose:
+                    progress.update(task, description=f"Processing {entry_id} ({idx}/{total})")
+                
+                try:
+                    result = checker.check_equivalence(sva1, sva2)
+                    
+                    result_entry = {
+                        "id": entry_id,
+                        "result": result.result.value,
+                        "equivalent": result.result == ImplicationResult.EQUIVALENT,
+                        "message": result.message,
+                    }
+                    
+                    if result.counterexample:
+                        result_entry["counterexample"] = result.counterexample
+                    
+                    if verbose and result.log:
+                        result_entry["log"] = result.log[:2000]  # Limit log length
+                    
+                    results.append(result_entry)
+                    
+                except Exception as e:
+                    error_entry = {
+                        "id": entry_id,
+                        "result": "error",
+                        "equivalent": False,
+                        "message": f"Error during verification: {str(e)}",
+                        "error": str(e),
+                    }
+                    results.append(error_entry)
+                    
+                    if verbose:
+                        console.print(f"[red]Error processing {entry_id}:[/red] {escape(str(e))}")
+                
+                progress.update(task, advance=1)
+        
+        # Output results
+        output_json = json.dumps(results, indent=2)
+        
+        if output_file:
+            output_path = Path(output_file)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(output_json)
+            if verbose:
+                console.print(f"\n[green]Results written to {output_file}[/green]")
+        else:
+            console.print(output_json, markup=False)
+        
+        # Summary
+        if verbose:
+            equivalent_count = sum(1 for r in results if r.get('equivalent', False))
+            error_count = sum(1 for r in results if r.get('result') == 'error')
+            console.print(f"\n[bold]Summary:[/bold] {equivalent_count}/{total} equivalent, {error_count} errors")
+            
+    except json.JSONDecodeError as e:
+        console.print(f"[red]Error: Invalid JSON file:[/red] {escape(str(e))}")
+        raise click.Abort()
+    except Exception as e:
+        console.print(f"[red]Error during batch processing:[/red] {escape(str(e))}")
         raise click.Abort()
 
 

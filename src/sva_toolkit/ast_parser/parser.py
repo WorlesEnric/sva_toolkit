@@ -228,22 +228,30 @@ class SVAASTParser:
         
         return {}
 
-    def _extract_signals(self, code: str) -> Set[Signal]:
+    def _extract_signals(self, code: str, property_body: Optional[str] = None) -> Set[Signal]:
         """
         Extract all signal references from SVA code.
         
         Args:
-            code: SVA code
+            code: SVA code (used for clock/reset extraction)
+            property_body: Optional extracted property body to limit signal extraction
             
         Returns:
             Set of Signal objects
         """
         signals = set()
         
+        # Use property body if provided, otherwise use full code
+        target_code = property_body if property_body else code
+        
         # Remove strings and comments
-        clean_code = re.sub(r'"[^"]*"', '', code)
+        clean_code = re.sub(r'"[^"]*"', '', target_code)
         clean_code = re.sub(r'//.*$', '', clean_code, flags=re.MULTILINE)
         clean_code = re.sub(r'/\*.*?\*/', '', clean_code, flags=re.DOTALL)
+        
+        # Remove built-in function names (but keep their arguments)
+        # Replace $funcname( with just ( to keep the arguments
+        clean_code = re.sub(r'\$[a-zA-Z_][a-zA-Z0-9_]*\s*\(', '(', clean_code)
         
         # Remove keywords and built-in functions
         keywords = {
@@ -255,6 +263,7 @@ class SVAASTParser:
             's_always', 's_eventually', 's_nexttime', 's_until', 's_until_with',
             'strong', 'weak', 'accept_on', 'reject_on', 'sync_accept_on', 'sync_reject_on',
             'module', 'endmodule', 'input', 'output', 'wire', 'reg', 'logic',
+            'error', 'warning', 'info', 'fatal',  # System tasks
         }
         
         # Find all identifiers (excluding numbers, keywords, and built-ins)
@@ -338,6 +347,42 @@ class SVAASTParser:
         
         return None, None, True
 
+    def _extract_property_body(self, code: str) -> str:
+        """
+        Extract only the property body from SVA code.
+        
+        Handles:
+        - Named property: property name; ... endproperty
+        - Inline assertion: assert property (...)
+        
+        Args:
+            code: SVA code
+            
+        Returns:
+            Property body content only
+        """
+        # Try to extract named property body (between property...endproperty)
+        property_match = re.search(
+            r'property\s+\w+\s*;([\s\S]*?)endproperty',
+            code,
+            re.IGNORECASE
+        )
+        if property_match:
+            return property_match.group(1).strip()
+        
+        # Try to extract inline assertion property body
+        # Matches: assert/assume/cover property (...)
+        inline_match = re.search(
+            r'(?:assert|assume|cover)\s+property\s*\(([^;]+)\)',
+            code,
+            re.IGNORECASE
+        )
+        if inline_match:
+            return inline_match.group(1).strip()
+        
+        # Fallback: return original code
+        return code
+
     def _extract_implication(self, code: str) -> Tuple[ImplicationType, Optional[str], Optional[str]]:
         """
         Extract implication type and antecedent/consequent from SVA code.
@@ -348,24 +393,21 @@ class SVAASTParser:
         Returns:
             Tuple of (implication_type, antecedent, consequent)
         """
-        # Find property body (between property/endproperty or in assert/assume/cover)
-        property_body = code
+        # First extract the property body to avoid including assertion statements
+        property_body = self._extract_property_body(code)
         
         # Look for non-overlapping implication first (|=>)
         if '|=>' in property_body:
             parts = property_body.split('|=>', 1)
             if len(parts) == 2:
-                # Clean up antecedent (remove property header, clock, disable iff)
+                # Clean up antecedent (remove clock, disable iff)
                 antecedent = parts[0]
-                antecedent = re.sub(r'property\s+\w+\s*;?', '', antecedent)
                 antecedent = re.sub(r'@\s*\([^)]+\)', '', antecedent)
                 antecedent = re.sub(r'disable\s+iff\s*\([^)]+\)', '', antecedent)
                 antecedent = antecedent.strip().strip(';').strip()
                 
-                # Clean up consequent (remove endproperty)
-                consequent = parts[1]
-                consequent = re.sub(r'endproperty', '', consequent)
-                consequent = consequent.strip().strip(';').strip()
+                # Clean up consequent
+                consequent = parts[1].strip().strip(';').strip()
                 
                 return ImplicationType.NON_OVERLAPPING, antecedent, consequent
         
@@ -374,14 +416,11 @@ class SVAASTParser:
             parts = property_body.split('|->', 1)
             if len(parts) == 2:
                 antecedent = parts[0]
-                antecedent = re.sub(r'property\s+\w+\s*;?', '', antecedent)
                 antecedent = re.sub(r'@\s*\([^)]+\)', '', antecedent)
                 antecedent = re.sub(r'disable\s+iff\s*\([^)]+\)', '', antecedent)
                 antecedent = antecedent.strip().strip(';').strip()
                 
-                consequent = parts[1]
-                consequent = re.sub(r'endproperty', '', consequent)
-                consequent = consequent.strip().strip(';').strip()
+                consequent = parts[1].strip().strip(';').strip()
                 
                 return ImplicationType.OVERLAPPING, antecedent, consequent
         
@@ -501,14 +540,17 @@ class SVAASTParser:
         # Get Verible AST
         verible_ast = self._run_verible(code)
         
+        # Extract property body first (for cleaner signal/operator extraction)
+        property_body = self._extract_property_body(code)
+        
         # Extract components
-        signals = self._extract_signals(code)
-        builtin_functions = self._extract_builtin_functions(code)
+        signals = self._extract_signals(code, property_body)
+        builtin_functions = self._extract_builtin_functions(property_body)
         clock_signal, clock_edge = self._extract_clock_info(code)
         disable_condition, reset_signal, reset_active_low = self._extract_disable_condition(code)
         implication_type, antecedent, consequent = self._extract_implication(code)
-        delays = self._extract_delays(code)
-        temporal_operators = self._extract_temporal_operators(code)
+        delays = self._extract_delays(property_body)
+        temporal_operators = self._extract_temporal_operators(property_body)
         property_name = self._extract_property_name(code)
         is_assertion, is_assumption, is_cover = self._determine_assertion_type(code)
         

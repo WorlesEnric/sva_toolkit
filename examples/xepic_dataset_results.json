@@ -1,0 +1,77 @@
+{
+  "comparison": {
+    "models": [
+      "Pro/deepseek-ai/DeepSeek-V3",
+      "Pro/deepseek-ai/DeepSeek-R1",
+      "Qwen/Qwen3-Coder-480B-A35B-Instruct"
+    ],
+    "equivalent_rates": [
+      0.78,
+      0.76,
+      0.77
+    ],
+    "any_implication_rates": [
+      0.79,
+      0.81,
+      0.77
+    ],
+    "success_rates": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "avg_generation_times": [
+      1.7619657921791076,
+      24.222843403816224,
+      2.2054152512550353
+    ],
+    "best_equivalent_rate": 0.78,
+    "best_any_implication_rate": 0.81,
+    "best_equivalent_model": "Pro/deepseek-ai/DeepSeek-V3",
+    "best_implication_model": "Pro/deepseek-ai/DeepSeek-R1"
+  },
+  "results": [
+    {
+      "model_name": "Pro/deepseek-ai/DeepSeek-V3",
+      "total_items": 100,
+      "equivalent_count": 78,
+      "generated_implies_reference_count": 0,
+      "reference_implies_generated_count": 1,
+      "no_relationship_count": 21,
+      "error_count": 0,
+      "equivalent_rate": 0.78,
+      "any_implication_rate": 0.79,
+      "success_rate": 1.0,
+      "avg_generation_time": 1.7619657921791076,
+      "avg_verification_time": 0.06809020757675172
+    },
+    {
+      "model_name": "Pro/deepseek-ai/DeepSeek-R1",
+      "total_items": 100,
+      "equivalent_count": 76,
+      "generated_implies_reference_count": 1,
+      "reference_implies_generated_count": 4,
+      "no_relationship_count": 19,
+      "error_count": 0,
+      "equivalent_rate": 0.76,
+      "any_implication_rate": 0.81,
+      "success_rate": 1.0,
+      "avg_generation_time": 24.222843403816224,
+      "avg_verification_time": 0.06456690311431884
+    },
+    {
+      "model_name": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+      "total_items": 100,
+      "equivalent_count": 77,
+      "generated_implies_reference_count": 0,
+      "reference_implies_generated_count": 0,
+      "no_relationship_count": 23,
+      "error_count": 0,
+      "equivalent_rate": 0.77,
+      "any_implication_rate": 0.77,
+      "success_rate": 1.0,
+      "avg_generation_time": 2.2054152512550353,
+      "avg_verification_time": 0.04206026554107666
+    }
+  ]
+}

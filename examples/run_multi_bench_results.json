@@ -1,0 +1,77 @@
+{
+  "comparison": {
+    "models": [
+      "Pro/deepseek-ai/DeepSeek-V3",
+      "Pro/deepseek-ai/DeepSeek-R1",
+      "Qwen/Qwen3-Coder-480B-A35B-Instruct"
+    ],
+    "equivalent_rates": [
+      1.0,
+      0.8,
+      0.8
+    ],
+    "any_implication_rates": [
+      1.0,
+      1.0,
+      0.9
+    ],
+    "success_rates": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "avg_generation_times": [
+      1.6793957471847534,
+      24.94209418296814,
+      1.2616592407226563
+    ],
+    "best_equivalent_rate": 1.0,
+    "best_any_implication_rate": 1.0,
+    "best_equivalent_model": "Pro/deepseek-ai/DeepSeek-V3",
+    "best_implication_model": "Pro/deepseek-ai/DeepSeek-V3"
+  },
+  "results": [
+    {
+      "model_name": "Pro/deepseek-ai/DeepSeek-V3",
+      "total_items": 10,
+      "equivalent_count": 10,
+      "generated_implies_reference_count": 0,
+      "reference_implies_generated_count": 0,
+      "no_relationship_count": 0,
+      "error_count": 0,
+      "equivalent_rate": 1.0,
+      "any_implication_rate": 1.0,
+      "success_rate": 1.0,
+      "avg_generation_time": 1.6793957471847534,
+      "avg_verification_time": 0.020689511299133302
+    },
+    {
+      "model_name": "Pro/deepseek-ai/DeepSeek-R1",
+      "total_items": 10,
+      "equivalent_count": 8,
+      "generated_implies_reference_count": 1,
+      "reference_implies_generated_count": 1,
+      "no_relationship_count": 0,
+      "error_count": 0,
+      "equivalent_rate": 0.8,
+      "any_implication_rate": 1.0,
+      "success_rate": 1.0,
+      "avg_generation_time": 24.94209418296814,
+      "avg_verification_time": 0.016562175750732423
+    },
+    {
+      "model_name": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+      "total_items": 10,
+      "equivalent_count": 8,
+      "generated_implies_reference_count": 0,
+      "reference_implies_generated_count": 1,
+      "no_relationship_count": 1,
+      "error_count": 0,
+      "equivalent_rate": 0.8,
+      "any_implication_rate": 0.9,
+      "success_rate": 1.0,
+      "avg_generation_time": 1.2616592407226563,
+      "avg_verification_time": 0.02104947566986084
+    }
+  ]
+}

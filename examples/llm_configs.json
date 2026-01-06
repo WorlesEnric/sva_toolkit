@@ -1,17 +1,22 @@
 [
   {
-    "base_url": "https://api.siliconflow.cn/v1",
-    "model": "Pro/deepseek-ai/DeepSeek-V3.2-Exp",
-    "api_key": "sk-anwluomxfwjhiwpoyjhjnmwnfqobzbdjaigihjwjcvncjehq"
+    "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+    "model": "deepseek-v3-1-250821",
+    "api_key": "b102a34c-c979-454f-b304-058e43dd9a96"
   },
   {
-    "base_url": "https://api.siliconflow.cn/v1",
-    "model": "Pro/deepseek-ai/DeepSeek-R1",
-    "api_key": "sk-anwluomxfwjhiwpoyjhjnmwnfqobzbdjaigihjwjcvncjehq"
+    "base_url": "https://prd.fe8.cn/v1",
+    "model": "gpt-5.1",
+    "api_key": "sk-SWslLpubFhsK9zXTNqZTjdvQI1r3AFLT3Nsc4Y6DVSkpfSv7"
   },
   {
-    "base_url": "https://api.siliconflow.cn/v1",
-    "model": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "api_key": "sk-anwluomxfwjhiwpoyjhjnmwnfqobzbdjaigihjwjcvncjehq"
+    "base_url": "https://prd.fe8.cn/v1",
+    "model": "claude-opus-4-5-20251101",
+    "api_key": "sk-SWslLpubFhsK9zXTNqZTjdvQI1r3AFLT3Nsc4Y6DVSkpfSv7"
+  },
+  {
+    "base_url": "https://prd.fe8.cn/v1",
+    "model": "qwen3-coder-plus",
+    "api_key": "sk-SWslLpubFhsK9zXTNqZTjdvQI1r3AFLT3Nsc4Y6DVSkpfSv7"
   }
 ]

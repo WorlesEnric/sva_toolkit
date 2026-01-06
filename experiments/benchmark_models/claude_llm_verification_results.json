@@ -1,0 +1,682 @@
+{
+  "total_processed": 325,
+  "matches_count": 41,
+  "mismatches_count": 57,
+  "errors_count": 1,
+  "match_rate": 0.12615384615384614,
+  "mismatch_rate": 0.1753846153846154,
+  "matches": [
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 17,
+      "relationship": "generated_implies_reference"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 24,
+      "relationship": "generated_implies_reference"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 33,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 34,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 37,
+      "relationship": "generated_implies_reference"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 48,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 59,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 70,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 83,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 86,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 91,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 104,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 116,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 117,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 119,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 125,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 138,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 142,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 180,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 186,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 195,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 204,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 209,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 212,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 213,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 222,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 226,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 228,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 232,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 236,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 253,
+      "relationship": "generated_implies_reference"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 265,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 266,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 285,
+      "relationship": "no_relationship"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 290,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 302,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 305,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 306,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 314,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 320,
+      "relationship": "reference_implies_generated"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 323,
+      "relationship": "reference_implies_generated"
+    }
+  ],
+  "mismatches": [
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 5,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_subtra_shift_assignment;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && enable == 1) |-> ##1 subtra_shift == ($past(subtrahend) >> $past(exponent_diff));\nendproperty\nassert_...",
+      "sva2": "property p_subtra_shift_correct;\n@(posedge clk) disable iff (rst)\n(rst == 0 && enable == 1) |=> (subtra_shift == (subtrahend >> exponent_diff));\nendproperty\nassert property (p_subtra_shift_correct) el..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 11,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_tapfordqs1_assignment_on_reset;\n    @(posedge clk) disable iff (reset == 0)\n        reset_r == 1 |-> ##1 tapfordqs1 == $past(default_tap);\nendproperty\nassert_p_tapfordqs1_assignment_on_rese...",
+      "sva2": "property p_tapfordqs1_after_reset;\n@(posedge clk) disable iff (reset == 0)\n(reset_r == 1) |=> (tapfordqs1 == $past(default_tap, 2));\nendproperty\nassert property (p_tapfordqs1_after_reset) else $error(..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 16,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_crc_reset_assignment;\n    @(posedge Clk) disable iff (Reset == 0)\n        Reset == 1 |-> ##1 Crc == 32'hffffffff;\nendproperty\nassert_p_crc_reset_assignment: assert property (p_crc_reset_ass...",
+      "sva2": "property p_crc_init_after_reset;\n@(posedge Clk) disable iff (!Reset)\n$rose(Reset) |=> (Crc == 32'hffffffff);\nendproperty\nassert property (p_crc_init_after_reset) else $error(\"CRC not initialized to 32..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 18,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_MdoEn_2d_reset_logic;\n    @(posedge Clk) disable iff (Reset == 0)\n        Reset == 1 |-> ##1 MdoEn_2d == 0;\nendproperty\nassert_p_MdoEn_2d_reset_logic: assert property (p_MdoEn_2d_reset_logi...",
+      "sva2": "property p_MdoEn_2d_reset;\n@(posedge Clk) disable iff (!Reset)\n$rose(Reset) |=> (MdoEn_2d == 0);\nendproperty\nassert property (p_MdoEn_2d_reset) else $error(\"MdoEn_2d not 0 one cycle after Reset assert..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 20,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_countx_ff_q_assignment_on_reset;\n    @(posedge clk) disable iff (RST == 0)\n        RST == 1 |-> ##1 countx_ff_q == $past(X);\nendproperty\nassert_p_countx_ff_q_assignment_on_reset: assert pro...",
+      "sva2": "property p_countx_ff_q_reset;\n@(posedge clk) disable iff (!RST)\n$rose(RST) |=> (countx_ff_q == $past(X, 1));\nendproperty\nassert property (p_countx_ff_q_reset) else $error(\"countx_ff_q not equal to pre..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 29,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "no_relationship",
+      "sva1": "property p_reload_count_assignment;\n    @(posedge bus_clk) disable iff (async_rst_b == 1)\n        async_rst_b == 0 |-> ##1 reload_count == 1'b0;\nendproperty\nassert_p_reload_count_assignment: assert pr...",
+      "sva2": "property p_reload_count_after_reset;\n@(posedge bus_clk) disable iff (async_rst_b)\n$fell(async_rst_b) |=> (reload_count == 1'b0);\nendproperty\nassert property (p_reload_count_after_reset) else $error(\"r..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 35,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "no_relationship",
+      "sva1": "property p_wb_ack_o_reset;\n    @(posedge wb_clk_i) disable iff (wb_rst_i == 0)\n        wb_rst_i == 1 |-> ##1 wb_ack_o == 0;\nendproperty\nassert_p_wb_ack_o_reset: assert property (p_wb_ack_o_reset) else...",
+      "sva2": "property p_wb_ack_o_low_after_reset;\n@(posedge wb_clk_i) disable iff (!wb_rst_i) $rose(wb_rst_i) |=> (wb_ack_o == 0);\nendproperty\nassert property (p_wb_ack_o_low_after_reset) else $error(\"wb_ack_o not..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 38,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_data_d_reset_initialization;\n    @(posedge clk) disable iff (reset == 1)\n        reset == 0 |-> ##1 data_d == 0;\nendproperty\nassert_p_data_d_reset_initialization: assert property (p_data_d_...",
+      "sva2": "property data_d_init_after_reset;\n@(posedge clk) disable iff (rst) (!rst |=> (data_d == 0));\nendproperty\nassert property (data_d_init_after_reset) else $error(\"data_d not initialized to 0 after reset ..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 39,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_exponent_a_assignment;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && enable == 1) |-> ##1 exponent_a == $past(opa[62:52]);\nendproperty\nassert_p_exponent_a_assignment: asser...",
+      "sva2": "property p_exponent_a_capture;\n@(posedge clk) disable iff (rst) (enable == 1) |=> (exponent_a == $past(opa[62:52]));\nendproperty\nassert property (p_exponent_a_capture) else $error(\"exponent_a did not ..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 47,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_broadcast_drop_reset;\n    @(posedge Clk)\n    disable iff (Reset == 0)\n    Reset == 1 |-> ##1 broadcast_drop == 0;\nendproperty\nassert_p_broadcast_drop_reset: assert property (p_broadcast_dro...",
+      "sva2": "property p_broadcast_drop_after_reset;\n@(posedge Clk) disable iff (!Reset)\n$rose(Reset) |=> (broadcast_drop == 0);\nendproperty\nassert property (p_broadcast_drop_after_reset) else $error(\"broadcast_dro..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 49,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "no_relationship",
+      "sva1": "property p_r_wb_cyc_o_assignment;\n    @(posedge HCLK) disable iff (HRESETn == 1)\n        HRESETn == 0 |-> ##1 r_wb_cyc_o == 0;\nendproperty\nassert_p_r_wb_cyc_o_assignment: assert property (p_r_wb_cyc_o...",
+      "sva2": "property p_r_wb_cyc_o_after_reset;\n@(posedge HCLK) disable iff (HRESETn) !$rose(HRESETn) |=> (r_wb_cyc_o == 0);\nendproperty\nassert property (p_r_wb_cyc_o_after_reset) else $error(\"r_wb_cyc_o not 0 one..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 53,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_program_counter_assignment;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && program_counter == 16'd0) |-> ##1 program_counter == 16'd3;\nendproperty\nassert_p_program_counter_a...",
+      "sva2": "property p_program_counter_zero_to_three;\n@(posedge clk) disable iff (rst) (program_counter == 16'd0) |=> (program_counter == 16'd3);\nendproperty\nassert property (p_program_counter_zero_to_three) else..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 56,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_rs_write_counter_reset;\n    @(posedge clk_core) disable iff (rst_x == 1)\n        rst_x == 0 |-> ##1 rs_write_counter == 0;\nendproperty\nassert_p_rs_write_counter_reset: assert property (p_rs...",
+      "sva2": "property p_rs_write_counter_reset;\n@(posedge clk_core) disable iff (rst_x)\n!$past(rst_x) |-> (rs_write_counter == 0);\nendproperty\nassert property (p_rs_write_counter_reset) else $error(\"rs_write_count..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 67,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_rIMM_assignment_on_grst;\n    @(posedge gclk) disable iff (grst == 0)\n        grst == 1 |-> ##1 rIMM == 16'h0;\nendproperty\nassert_p_rIMM_assignment_on_grst: assert property (p_rIMM_assignmen...",
+      "sva2": "property p_rIMM_after_reset;\n@(posedge gclk) disable iff (!grst)\n$rose(grst) |=> (rIMM == 16'h0);\nendproperty\nassert property (p_rIMM_after_reset) else $error(\"rIMM not 16'h0 one cycle after grst asse..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 68,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_RxLateCollision_Reset;\n    @(posedge MRxClk) disable iff (Reset == 0)\n        Reset == 1 |-> ##1 RxLateCollision == 0;\nendproperty\nassert_p_RxLateCollision_Reset: assert property (p_RxLateC...",
+      "sva2": "property p_rx_late_collision_after_reset;\n@(posedge MRxClk) disable iff (!Reset)\n$rose(Reset) |=> !RxLateCollision;\nendproperty\nassert property (p_rx_late_collision_after_reset)\nelse $error(\"RxLateCol..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 95,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "no_relationship",
+      "sva1": "property p_bus_wait_state_assignment;\n    @(posedge wb_clk_i) disable iff (async_rst_b == 1)\n        async_rst_b == 0 |-> ##1 bus_wait_state == 0;\nendproperty\nassert_p_bus_wait_state_assignment: asser...",
+      "sva2": "property p_bus_wait_state_after_reset;\n@(posedge wb_clk_i) disable iff (async_rst_b)\n$fell(async_rst_b) |=> (bus_wait_state == 0);\nendproperty\nassert property (p_bus_wait_state_after_reset)\nelse $erro..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 101,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_minuend_assignment_logic;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && enable == 1) |-> ##1 minuend == {$past(!large_is_denorm), $past(mantissa_large), 2'b00};\nendproperty...",
+      "sva2": "property minuend_assignment_p;\n@(posedge clk) disable iff (rst)\n(enable == 1'b1) |-> ##1 (minuend == {!large_is_denorm, mantissa_large, 2'b00});\nendproperty\nassert property (minuend_assignment_p) else..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 106,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_denorm_to_norm_assignment;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && enable == 1) |-> ##1 denorm_to_norm == ($past(sum_leading_one) & $past(large_is_denorm));\nendproper...",
+      "sva2": "property p_denorm_to_norm_check;\n@(posedge clk) disable iff (rst) (enable && !rst) |=> (denorm_to_norm == (sum_leading_one && large_is_denorm));\nendproperty\nassert property (p_denorm_to_norm_check) el..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 123,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_ReceivedPacketTooBig_Reset;\n    @(posedge MRxClk) disable iff (Reset == 0)\n        Reset == 1 |-> ##1 ReceivedPacketTooBig == 0;\nendproperty\nassert_p_ReceivedPacketTooBig_Reset: assert prop...",
+      "sva2": "property p_ReceivedPacketTooBig_cleared_after_reset;\n@(posedge MRxClk) disable iff (!Reset)\n$rose(Reset) |=> !ReceivedPacketTooBig;\nendproperty\nassert property (p_ReceivedPacketTooBig_cleared_after_re..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 130,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_broadcast_counter_reset;\n    @(posedge Clk) disable iff (Reset == 0)\n        Reset == 1 |-> ##1 broadcast_counter == 0;\nendproperty\nassert_p_broadcast_counter_reset: assert property (p_broa...",
+      "sva2": "property p_broadcast_counter_reset;\n@(posedge Clk) disable iff (!Reset)\n$rose(Reset) |=> (broadcast_counter == 0);\nendproperty\nassert property (p_broadcast_counter_reset) else $error(\"broadcast_counte..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 144,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_sum_final_rounding_logic;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && round_trigger == 1) |-> ##1 sum_final == $past(sum_round_2);\nendproperty\nassert_p_sum_final_rounding...",
+      "sva2": "property p_rounding_sum_match;\n@(posedge clk) disable iff (rst) (round_trigger == 1) |=> (sum_final == $past(sum_round_2, 1));\nendproperty\nassert property (p_rounding_sum_match) else $error(\"Sum final..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 147,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_wdat_assignment_logic;\n    @(posedge ckmb) disable iff (reset == 1)\n        (reset == 0 && IO_Addr_Strobe == 1 && IO_Write_Strobe == 1 && IO_Address[4:2] == 3'b000) |-> ##1 wdat[31:0] == $p...",
+      "sva2": "property p_wdat_capture;\n@(posedge ckmb) disable iff (reset) (\n(IO_Addr_Strobe && IO_Write_Strobe && (IO_Address[4:2] == 3'b000)) |=> (wdat[31:0] == $past(iowd, 1))\n);\nendproperty\nassert property (p_w..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 150,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_sign_assignment_logic;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && enable == 1) |-> ##1 sign == ($past(opa[63]) ^ $past(opb[63]));\nendproperty\nassert_p_sign_assignment_lo...",
+      "sva2": "property sign_xor_check;\n@(posedge clk) disable iff (rst) (enable ##1 (sign == (opa[63] ^ opb[63])));\nendproperty\nassert property (sign_xor_check) else $error(\"Sign signal incorrect XOR result\");"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 159,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_r_state_reset_init;\n    @(posedge clk_core) disable iff (rst_x == 1)\n        rst_x == 0 |-> ##1 r_state == $past(P_IDLE);\nendproperty\nassert_p_r_state_reset_init: assert property (p_r_state...",
+      "sva2": "property p_r_state_idle_after_reset;\n@(posedge clk_core) disable iff (rst_x)\n!$past(rst_x) |-> r_state == $past(P_IDLE);\nendproperty\nassert property (p_r_state_idle_after_reset) else $error(\"r_state d..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 165,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_cyc_o_assignment;\n    @(posedge hclk) disable iff (hresetn == 0)\n        (hresetn == 1 && hready == 1 && hsel == 1 && hburst == 3'b000 && htrans == 2'b00) |-> ##1 (cyc_o == 0);\nendproperty\n...",
+      "sva2": "property cyc_o_zero_after_condition;\n@(posedge hclk) disable iff (!hresetn)\n(hready && hsel && (hburst == 3'b000) && (htrans == 2'b00)) |=> (cyc_o == 0);\nendproperty\nassert property (cyc_o_zero_after_..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 167,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_inc_state_assignment;\n    @(posedge clk_i) disable iff (rst_i == 1)\n        (rst_i == 0 && state < '1) |-> inc_state == (state + 1);\nendproperty\nassert_p_inc_state_assignment: assert proper...",
+      "sva2": "property p_inc_state_increment;\n@(posedge clk_i) disable iff (rst_i)\n(state < '1) |-> (inc_state == state + 1);\nendproperty\nassert property (p_inc_state_increment) else $error(\"inc_state did not incre..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 172,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_sfr_mx_assignment_on_grst;\n    @(posedge gclk) disable iff (grst == 0)\n        (grst == 1) |-> ##1 (sfr_mx == 32'h0);\nendproperty\nassert_p_sfr_mx_assignment_on_grst: assert property (p_sfr_...",
+      "sva2": "property p_sfr_mx_after_reset;\n@(posedge gclk) disable iff (!grst)\n$rose(grst) |=> (sfr_mx == 32'h0);\nendproperty\nassert property (p_sfr_mx_after_reset) else $error(\"sfr_mx not 0 one cycle after grst ..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 175,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_mem_ex_assignment_on_grst;\n    @(posedge gclk) disable iff (grst == 0)\n        grst == 1 |-> ##1 mem_ex == 30'h0;\nendproperty\nassert_p_mem_ex_assignment_on_grst: assert property (p_mem_ex_a...",
+      "sva2": "property mem_ex_reset_check;\n@(posedge gclk) disable iff (!grst) $rose(grst) |=> (mem_ex == 30'h0);\nendproperty\nassert property (mem_ex_reset_check) else $error(\"mem_ex not 0 one cycle after grst asse..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 176,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_RxLateCollision_Reset;\n    @(posedge MRxClk) disable iff (Reset == 0)\n        Reset == 1 |-> ##1 RxLateCollision == 0;\nendproperty\nassert_p_RxLateCollision_Reset: assert property (p_RxLateC...",
+      "sva2": "property p_RxLateCollision_After_Reset;\n@(posedge MRxClk) disable iff (!Reset)\n$rose(Reset) |=> (RxLateCollision == 0);\nendproperty\nassert property (p_RxLateCollision_After_Reset) else $error(\"RxLateC..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 179,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "no_relationship",
+      "sva1": "property p_clck_assignment_on_async_rst_b_deasserted;\n    @(posedge bus_clk) disable iff (async_rst_b == 1)\n        async_rst_b == 0 |-> ##1 clck == 1'b0;\nendproperty\nassert_p_clck_assignment_on_async...",
+      "sva2": "property p_clck_after_async_rst_b;\n@(posedge bus_clk) disable iff (async_rst_b) !$rose(async_rst_b) |=> (clck == 0);\nendproperty\nassert property (p_clck_after_async_rst_b) else $error(\"clck not 0 one ..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 187,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_rDWBSTB_reset;\n    @(posedge gclk) disable iff (grst == 0)\n        grst == 1 |-> ##1 rDWBSTB == 0;\nendproperty\nassert_p_rDWBSTB_reset: assert property (p_rDWBSTB_reset) else $error(\"Asserti...",
+      "sva2": "property p_rDWBSTB_reset_check;\n@(posedge gclk) disable iff (grst == 0)\n$rose(grst) |=> (rDWBSTB == 0);\nendproperty\nassert property (p_rDWBSTB_reset_check) else $error(\"rDWBSTB not 0 one cycle after g..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 189,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_sign_assignment_logic;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && enable == 1) |-> ##1 sign == ($past(opa[63]) ^ $past(opb[63]));\nendproperty\nassert_p_sign_assignment_lo...",
+      "sva2": "property p_sign_xor_check;\n@(posedge clk) disable iff (rst) (enable == 1'b1) |=> (sign == ($past(opa[63]) ^ $past(opb[63])));\nendproperty\nassert property (p_sign_xor_check) else $error(\"Sign signal do..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 194,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_x_signals_assignment;\n    @(posedge i_clk)\n        { i_dstb_n == 1, i_astb_n == 1, i_write_n == 1, i_depp == 1 } |-> ##1 { x_dstb_n, x_astb_n, x_write_n, x_depp } == $past({ i_dstb_n, i_ast...",
+      "sva2": "property p_signal_delay_check;\n@(posedge i_clk) ({i_dstb_n, i_astb_n, i_write_n, i_depp} == 4'b1111) |=> ({x_dstb_n, x_astb_n, x_write_n, x_depp} == $past({i_dstb_n, i_astb_n, i_write_n, i_depp}, 1));..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 197,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_cc_assignment_logic;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && datavalid == 1 && Ec == 1 && cc < '1) |-> ##1 cc == $past(cc) + 1;\nendproperty\nassert_p_cc_assignment_log...",
+      "sva2": "property p_counter_increment;\n@(posedge clk) disable iff (rst) (\n(datavalid && Ec && (cc != '1)) |=> (cc == $past(cc) + 1)\n);\nendproperty\nassert property (p_counter_increment) else $error(\"Counter cc ..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 199,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_TTMP_assignment_logic;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && io_we == 1 && io_re == 0 && io_a == 2'b01) |-> ##1 (TTMP == $past(io_di));\nendproperty\nassert_p_TTMP_as...",
+      "sva2": "property p_ttmp_write_capture;\n@(posedge clk) disable iff (rst)\n((io_we == 1'b1) && (io_re == 1'b0) && (io_a == 2'b01)) |=> (TTMP == $past(io_di, 1));\nendproperty\nassert property (p_ttmp_write_capture..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 202,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_button_1_reset;\n    @(posedge clk_i) disable iff (rst_i == 0)\n        rst_i == 1 |-> ##1 button_1 == 0;\nendproperty\nassert_p_button_1_reset: assert property (p_button_1_reset) else $error(\"...",
+      "sva2": "property p_button_1_after_reset;\n@(posedge clk_i) disable iff (!rst_i)\n$rose(rst_i) |=> (button_1 == 0);\nendproperty\nassert property (p_button_1_after_reset) else $error(\"button_1 not 0 one cycle afte..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 229,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_state_reset_logic;\n    @(posedge clk2M) disable iff (reset == 0)\n        reset == 1 |-> ##1 state == $past(WAITFORGAP);\nendproperty\nassert_p_state_reset_logic: assert property (p_state_rese...",
+      "sva2": "property p_reset_holds_state;\n@(posedge clk2M) disable iff (!reset) (reset && $past(WAITFORGAP, 1)) |=> (state == $past(WAITFORGAP, 2));\nendproperty\nassert property (p_reset_holds_state) else $error(\"..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 235,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_count_reset_logic;\n    @(posedge clk_i) disable iff (rst_i == 0)\n        rst_i == 1 |-> ##1 count == 0;\nendproperty\nassert_p_count_reset_logic: assert property (p_count_reset_logic) else $e...",
+      "sva2": "property p_count_reset;\n@(posedge clk_i) disable iff (!rst_i)\n$rose(rst_i) |=> (count == 0);\nendproperty\nassert property (p_count_reset) else $error(\"Count not reset to zero after reset assertion\");"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 237,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "no_relationship",
+      "sva1": "property p_debug_ena_assignment;\n    @(posedge bus_clk) disable iff (async_rst_b == 1)\n        async_rst_b == 0 |-> ##1 debug_ena == 1'b0;\nendproperty\nassert_p_debug_ena_assignment: assert property (p...",
+      "sva2": "property debug_ena_reset_check;\n@(posedge bus_clk) disable iff (async_rst_b)\n$fell(async_rst_b) |=> (debug_ena == 0);\nendproperty\nassert property (debug_ena_reset_check) else $error(\"debug_ena was not..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 240,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_state_ff_q_reset;\n    @(posedge clk) disable iff (RST == 0)\n        RST == 1 |-> ##1 state_ff_q == $past(RESET);\nendproperty\nassert_p_state_ff_q_reset: assert property (p_state_ff_q_reset) ...",
+      "sva2": "property p_reset_state_check;\n@(posedge clk) disable iff (!RST) RST |=> (state_ff_q == $past(RESET, 2));\nendproperty\nassert property (p_reset_state_check) else $error(\"state_ff_q does not equal previo..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 242,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_alive_o_reset;\n    @(posedge clk_i) disable iff (rst_i == 0)\n        rst_i == 1 |-> ##1 alive_o == 0;\nendproperty\nassert_p_alive_o_reset: assert property (p_alive_o_reset) else $error(\"Asse...",
+      "sva2": "property alive_o_after_reset;\n@(posedge clk_i) disable iff (!rst_i)\n$rose(rst_i) |=> (alive_o == 0);\nendproperty\nassert property (alive_o_after_reset) else $error(\"alive_o did not become 0 one cycle a..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 248,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_rdat_assignment;\n    @(posedge ckdr) disable iff (reset == 1)\n        (reset == 0 && srdy == 1 && addr[4:2] == 3'b000) |-> ##1 rdat == $past(srdat[31:0]);\nendproperty\nassert_p_rdat_assignme...",
+      "sva2": "property p_srdy_addr_rdat_check;\n@(posedge ckdr) disable iff (reset) (\n(srdy && (addr[4:2] == 3'b000)) |=> (rdat == $past(srdat[31:0], 1))\n);\nendproperty\nassert property (p_srdy_addr_rdat_check) else ..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 249,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "no_relationship",
+      "sva1": "property p_rHSIZE_assignment;\n    @(posedge HCLK) disable iff (HRESETn == 1)\n        (HRESETn == 0) |-> ##1 (rHSIZE == 0);\nendproperty\nassert_p_rHSIZE_assignment: assert property (p_rHSIZE_assignment)...",
+      "sva2": "property p_rHSIZE_after_reset;\n@(posedge HCLK) disable iff (HRESETn) !$rose(HRESETn) |=> (rHSIZE == 0);\nendproperty\nassert property (p_rHSIZE_after_reset) else $error(\"rHSIZE not 0 one cycle after HRE..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 251,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_DeferLatched_Reset;\n    @(posedge MTxClk) disable iff (Reset == 0)\n        Reset == 1 |-> ##1 DeferLatched == 0;\nendproperty\nassert_p_DeferLatched_Reset: assert property (p_DeferLatched_Res...",
+      "sva2": "property p_DeferLatched_after_Reset;\n@(posedge MTxClk) disable iff (!Reset)\n$rose(Reset) |=> (DeferLatched == 0);\nendproperty\nassert property (p_DeferLatched_after_Reset) else $error(\"DeferLatched not..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 262,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_sum_assignment_logic;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && enable == 1 && (large_add < '1)) |-> ##1 sum == ($past(large_add) + $past(small_shift_3));\nendproperty\na...",
+      "sva2": "property p_sum_correct;\n@(posedge clk) disable iff (rst) (enable && (large_add < '1)) |=> (sum == ($past(large_add) + $past(small_shift_3)));\nendproperty\nassert property (p_sum_correct) else $error(\"S..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 271,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_dout_assignment_logic;\n    @(posedge clk) disable iff (reset_l == 0)\n        (reset_l == 1 && rd_en == 1) |-> ##1 dout == $past(dfq_mem[rd_adr[4:0]]);\nendproperty\nassert_p_dout_assignment_l...",
+      "sva2": "property p_dout_memory_read;\n@(posedge clk) disable iff (!reset_l)\n(rd_en) |=> (dout == $past(dfq_mem[rd_adr[4:0]]));\nendproperty\nassert property (p_dout_memory_read) else $error(\"dout does not match ..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 273,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_prescaler_increment;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && tcnt_write == 0 && prescaler < 1) |-> ##1 prescaler == $past(prescaler) + 1;\nendproperty\nassert_p_prescal...",
+      "sva2": "property prescaler_increment_p;\n@(posedge clk) disable iff (rst) (\n((tcnt_write == 0) && ($past(prescaler) < 1)) |=> (prescaler == $past(prescaler) + 1)\n);\nendproperty\nassert property (prescaler_incre..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 275,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_S_and_Step_assignment;\n    @(posedge clk) disable iff (reset == 1)\n        (reset == 0 && Step == Step1 && Sm_ready == 1) |-> \n        ##1 S[1] == $past(Sm1) && \n            S[2] == $past(S...",
+      "sva2": "property p_s_array_step_capture;\n@(posedge clk) disable iff (reset)\n((Step == Step1) && (Sm_ready == 1)) |=>\n(($past(Step2) == Step) &&\n(S[1] == $past(Sm1)) && (S[2] == $past(Sm2)) && (S[3] == $past(S..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 280,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_valid_o_reset;\n    @(posedge clk_i) disable iff (rst_i == 0)\n        (rst_i == 1) |-> ##1 (valid_o == 0);\nendproperty\nassert_p_valid_o_reset: assert property (p_valid_o_reset) else $error(\"...",
+      "sva2": "property valid_o_low_after_reset;\n@(posedge clk_i) disable iff (!rst_i)\n$rose(rst_i) |=> !valid_o;\nendproperty\nassert property (valid_o_low_after_reset) else $error(\"valid_o not deasserted one cycle a..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 289,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_cop_irq_assignment_on_reset;\n    @(posedge bus_clk) disable iff (async_rst_b == 1)\n        async_rst_b == 0 |-> ##1 cop_irq == 0;\nendproperty\nassert_p_cop_irq_assignment_on_reset: assert pr...",
+      "sva2": "property p_cop_irq_after_reset;\n@(posedge bus_clk) disable iff (async_rst_b) !$stable(async_rst_b) |=> (cop_irq == 0);\nendproperty\nassert property (p_cop_irq_after_reset) else $error(\"cop_irq not 0 on..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 293,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_Stall_active;\n    @(posedge clock) disable iff (reset == 1)\n        active == 1 |-> Stall == (active == 1);\nendproperty\nassert_p_Stall_active: assert property (p_Stall_active) else $error(\"...",
+      "sva2": "property p_active_implies_stall;\n@(posedge clk) disable iff (reset)\nactive |-> stall;\nendproperty\nassert property (p_active_implies_stall) else $error(\"Stall not asserted when active is high\");"
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 295,
+      "declared_relationship": "generated_implies_reference",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_r_rdata_assignment;\n    @(posedge clk_core) disable iff (rst_x == 0)\n        (rst_x == 1 && r_state == P_WAIT_ACK && i_ack == 1 && r_wr == 0 && i_rstr == 1) |-> ##1 r_rdata == $past(i_rd);\n...",
+      "sva2": "property p_rdata_capture;\n@(posedge clk_core) disable iff (!rst_x)\n(r_state == P_WAIT_ACK && i_ack && !r_wr && i_rstr) |=> (r_rdata == $past(i_rd));\nendproperty\nassert property (p_rdata_capture) else ..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 298,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_o_dly_stb_assignment;\n    @(posedge i_clk)\n        (o_wb_stall == 0 && i_wb_cyc == 1 && i_wb_stb == 1) |-> ##1 (o_dly_stb == ($past(i_wb_cyc) && $past(i_wb_stb)));\nendproperty\nassert_p_o_dl...",
+      "sva2": "property p_o_dly_stb_check;\n@(posedge i_clk) (o_wb_stall == 0 && i_wb_cyc == 1 && i_wb_stb == 1) |=> (o_dly_stb == (i_wb_cyc && i_wb_stb));\nendproperty\nassert property (p_o_dly_stb_check) else $error(..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 313,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_CarrierSenseLost_Reset;\n    @(posedge MTxClk) disable iff (Reset == 0)\n        Reset == 1 |-> ##1 CarrierSenseLost == 0;\nendproperty\nassert_p_CarrierSenseLost_Reset: assert property (p_Carr...",
+      "sva2": "property p_carrier_sense_lost_after_reset;\n@(posedge MTxClk) disable iff (!Reset)\n$rose(Reset) |=> (CarrierSenseLost == 0);\nendproperty\nassert property (p_carrier_sense_lost_after_reset) else $error(\"..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 316,
+      "declared_relationship": "reference_implies_generated",
+      "llm_relationship": "sva2_implies_sva1",
+      "sva1": "property p_state_assignment_during_reset;\n    @(posedge clk_i) disable iff (rst_i == 0)\n        rst_i == 1 |-> ##1 state == $past(wait_state);\nendproperty\nassert_p_state_assignment_during_reset: asser...",
+      "sva2": "property p_state_reflects_wait_state_on_reset;\n@(posedge clk_i) disable iff (!rst_i)\n$rose(rst_i) |=> (state == $past(wait_state));\nendproperty\nassert property (p_state_reflects_wait_state_on_reset) e..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 319,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_mul_a_assignment;\n    @(posedge clk) disable iff (rst == 1)\n        (rst == 0 && enable == 1) |-> ##1 mul_a == { $past(a_is_norm), $past(mantissa_a) };\nendproperty\nassert_p_mul_a_assignment...",
+      "sva2": "property p_mul_a_update;\n@(posedge clk) disable iff (rst)\n(!rst && enable) |=> (mul_a == {a_is_norm, mantissa_a});\nendproperty\nassert property (p_mul_a_update) else $error(\"mul_a did not update correc..."
+    },
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 321,
+      "declared_relationship": "no_relationship",
+      "llm_relationship": "equivalent",
+      "sva1": "property p_sum_0_assignment_logic;\n    @(posedge clk) disable iff (rst==1)\n        (rst == 0 && enable == 1) |-> ##1 sum_0 == ($past(product_a[40:17]) + $past(product_b));\nendproperty\nassert_p_sum_0_a...",
+      "sva2": "property p_sum_calculation;\n@(posedge clk) disable iff (rst) (en & !rst) |=> (sum_0 == ($past(product_a[40:17]) + $past(product_b)));\nendproperty\nassert property (p_sum_calculation) else $error(\"sum_0..."
+    }
+  ],
+  "errors": [
+    {
+      "model": "deepseek-v3-1-250821",
+      "index": 115,
+      "error": "EBMC reported error",
+      "sva1": "property p_xdiff_ydiff_assignment_logic;\n    @(posedge clk_i) disable iff (rst_i == 1)\n        (rst_...",
+      "sva2": "property p_xdiff_ydiff_correct_assignment;\n@(posedge clk_i) disable iff (rst_i) (\n(!rst_i && (state ..."
+    }
+  ]
+}

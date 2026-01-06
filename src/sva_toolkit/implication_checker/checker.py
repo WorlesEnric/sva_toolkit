@@ -22,7 +22,17 @@ class ImplicationResult(Enum):
     IMPLIES = "implies"  # SVA1 implies SVA2
     NOT_IMPLIES = "not_implies"  # SVA1 does not imply SVA2
     EQUIVALENT = "equivalent"  # SVA1 and SVA2 are equivalent
-    ERROR = "error"  # Verification error
+    ERROR = "error"  # Internal tool/verification error
+    SYNTAX_ERROR = "syntax_error"  # SVA syntax error in input
+    TIMEOUT = "timeout"  # Verification timed out
+
+
+class SVASyntaxError(Exception):
+    """Exception raised when SVA syntax is invalid."""
+    def __init__(self, message: str, log: Optional[str] = None):
+        super().__init__(message)
+        self.message = message
+        self.log = log
 
 
 @dataclass
@@ -32,6 +42,7 @@ class CheckResult:
     message: str
     counterexample: Optional[str] = None
     log: Optional[str] = None
+    module: Optional[str] = None  # Generated Verilog module for this check
 
 
 class SVAImplicationChecker:
@@ -58,10 +69,15 @@ class SVAImplicationChecker:
     EBMC_SUPPORTED_FUNCTIONS = {
         "$rose", "$fell", "$stable", "$past", "$onehot", "$onehot0"
     }
+    
+    # SVA constructs not supported by EBMC
+    UNSUPPORTED_CONSTRUCTS = {
+        "if_else_property": r'\bif\s*\([^)]+\)\s*[^|]*\|[-=]>.*\belse\b',
+    }
 
     MODULE_TEMPLATE = """
 module sva_checker (
-    input wire clk,
+    input wire {clock_name},
     input wire rst_n,
 {signal_declarations}
 );
@@ -75,20 +91,20 @@ module sva_checker (
 
     // 1. Assume the Antecedent (User SVA 1)
     //    We assume this property holds true to constrain the state space.
-    assume property (@(posedge clk) disable iff (!rst_n)
+    assume property (@({clock_edge} {clock_name}) disable iff (!rst_n)
         {antecedent}
     );
 
     // 2. Assert the Consequent (User SVA 2)
     //    We check if this holds true under the assumption above.
-    assert property (@(posedge clk) disable iff (!rst_n)
+    assert property (@({clock_edge} {clock_name}) disable iff (!rst_n)
         {consequent}
     );
 
     // 3. Cover the Antecedent
     //    (Optional) Check if the antecedent is even possible.
     cover_antecedent: cover property (
-        @(posedge clk) disable iff (!rst_n)
+        @({clock_edge} {clock_name}) disable iff (!rst_n)
         {antecedent}
     );
 
@@ -103,6 +119,7 @@ endmodule
         keep_files: bool = False,
         verbose: bool = False,
         require_ebmc: bool = False,
+        timeout: int = 300,
     ):
         """
         Initialize the implication checker.
@@ -114,6 +131,7 @@ endmodule
             keep_files: Keep generated files after verification
             verbose: Print debug information
             require_ebmc: If True, raise error if EBMC not found (default: False)
+            timeout: Timeout in seconds for each EBMC verification (default: 300)
         """
         # Determine paths relative to this file
         project_root = Path(__file__).resolve().parent.parent.parent.parent
@@ -132,6 +150,7 @@ endmodule
         self.depth = depth
         self.keep_files = keep_files
         self.verbose = verbose
+        self.timeout = timeout
         self.parser = SVAASTParser()
         self.ebmc_available = False
         
@@ -185,11 +204,35 @@ endmodule
         """
         return self.parser.parse(sva_code)
 
+    def _extract_clock_spec(self, sva_code: str) -> Tuple[str, str]:
+        """
+        Extract the clock specification from SVA code.
+        
+        Args:
+            sva_code: SVA code string
+            
+        Returns:
+            Tuple of (clock_edge, clock_name). Defaults to ("posedge", "clk") if not found.
+        """
+        code = sva_code.strip().strip('`').strip()
+        # Match @(posedge clk_name) or @(negedge clk_name)
+        clock_match = re.search(
+            r'@\s*\(\s*(posedge|negedge)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\)',
+            code,
+            re.IGNORECASE
+        )
+        if clock_match:
+            edge = clock_match.group(1).lower()
+            clock_name = clock_match.group(2)
+            return (edge, clock_name)
+        return ("posedge", "clk")
+
     def _extract_property_body(self, sva_code: str) -> str:
         """
         Extract the core property body from SVA code, handling various formats.
         
         This handles:
+        - Markdown backticks (inline code formatting)
         - Simple inline expressions: "req |-> ##1 gnt"
         - Property declarations with property/endproperty
         - Assert/assume/cover property wrappers
@@ -204,7 +247,9 @@ endmodule
             The core property expression
         """
         code = sva_code.strip()
-        
+        # Remove markdown backticks that may surround the code (e.g., from LLM output)
+        code = code.strip('`')
+        code = code.strip()
         # First, check if there's a property ... endproperty block
         # This should take priority over assert property references
         property_match = re.search(
@@ -335,17 +380,18 @@ endmodule
             # Match the function call but don't consume the content
             clean_expr = re.sub(rf'\{func}\s*\(', '(', clean_expr, flags=re.IGNORECASE)
         
-        # Keywords to exclude
+        # Keywords to exclude (SVA/Verilog keywords only)
+        # Note: Do NOT exclude signal names like 'reset', 'rst', 'clock', 'stable'
+        # as these could be user signals. Only exclude 'clk' and 'rst_n' which are
+        # the module's predefined ports.
+        # Built-in function names like $stable are already handled by the regex
+        # substitution above, so we don't need to exclude their base names.
         keywords = {
             'property', 'endproperty', 'sequence', 'endsequence',
             'assert', 'assume', 'cover', 'disable', 'iff',
             'posedge', 'negedge', 'or', 'and', 'not', 'if', 'else',
             'throughout', 'within', 'intersect', 'first_match',
-            'clk', 'rst_n', 'rst', 'reset', 'clock',
-            # Also exclude common built-in function name fragments
-            'rose', 'fell', 'stable', 'changed', 'past',
-            'onehot', 'onehot0', 'isunknown', 'countones',
-            'sampled', 'bits',
+            'clk', 'rst_n',  # Module's predefined ports only
         }
         
         # Find all identifiers
@@ -373,6 +419,41 @@ endmodule
         for expr in expressions:
             all_signals.update(self._collect_signals_from_expression(expr))
         return all_signals
+
+    def _detect_unsupported_functions(self, *expressions: str) -> Set[str]:
+        """
+        Detect SVA functions that are not supported by EBMC.
+        
+        Args:
+            *expressions: SVA expressions to check
+            
+        Returns:
+            Set of unsupported function names found in the expressions
+        """
+        unsupported = set()
+        unsupported_funcs = self.BUILTIN_FUNCTIONS - self.EBMC_SUPPORTED_FUNCTIONS
+        for expr in expressions:
+            for func in unsupported_funcs:
+                if re.search(rf'\{func}\s*\(', expr, re.IGNORECASE):
+                    unsupported.add(func)
+        return unsupported
+
+    def _detect_unsupported_constructs(self, *expressions: str) -> Set[str]:
+        """
+        Detect SVA constructs that are not supported by EBMC.
+        
+        Args:
+            *expressions: SVA expressions to check
+            
+        Returns:
+            Set of unsupported construct names found in the expressions
+        """
+        unsupported = set()
+        for expr in expressions:
+            for construct_name, pattern in self.UNSUPPORTED_CONSTRUCTS.items():
+                if re.search(pattern, expr, re.IGNORECASE | re.DOTALL):
+                    unsupported.add(construct_name)
+        return unsupported
 
     def _analyze_past_usage(self, expr: str) -> Dict[str, int]:
         """
@@ -403,7 +484,8 @@ endmodule
     def _generate_past_signal_infrastructure(
         self,
         expr1: str,
-        expr2: str
+        expr2: str,
+        clock_name: str = "clk"
     ) -> Tuple[str, str, str, str]:
         """
         Generate Verilog code for $past signal handling.
@@ -414,6 +496,7 @@ endmodule
         Args:
             expr1: First expression
             expr2: Second expression
+            clock_name: Name of the clock signal to use
             
         Returns:
             Tuple of (declarations, logic, modified_expr1, modified_expr2)
@@ -442,7 +525,7 @@ endmodule
                 declarations.append(f"    reg {signal}_d{d};")
             
             # Generate shift register logic
-            logic.append(f"    always @(posedge clk) begin")
+            logic.append(f"    always @(posedge {clock_name}) begin")
             logic.append(f"        if (!rst_n) begin")
             for d in range(1, max_depth + 1):
                 logic.append(f"            {signal}_d{d} <= 1'b0;")
@@ -490,7 +573,7 @@ endmodule
         module_content: str,
         module_name: str,
         work_dir: str,
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[Optional[bool], str]:
         """
         Run EBMC verification.
         
@@ -529,25 +612,111 @@ endmodule
                 cwd=work_dir,
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5 minute timeout
+                timeout=self.timeout,
             )
-            
             log = result.stdout + result.stderr
-            
             if self.verbose:
                 print("EBMC Output:")
                 print(log)
-            
             # EBMC exit codes:
             # 0 = all properties proved
             # 10 = property violated (counterexample found)
             # Other = error
             success = result.returncode == 0
-            
             return success, log
-            
         except subprocess.TimeoutExpired:
-            return False, "EBMC verification timed out"
+            return None, f"EBMC verification timed out after {self.timeout} seconds"
+
+    def _categorize_error(self, log: str) -> Tuple[bool, bool, str]:
+        """
+        Categorize the type of error from EBMC log output.
+        
+        Args:
+            log: EBMC log output
+            
+        Returns:
+            Tuple of (is_error, is_syntax_error, error_message)
+            - is_error: True if any error occurred (not a verification failure)
+            - is_syntax_error: True if the error is due to invalid SVA syntax
+            - error_message: Descriptive error message
+        """
+        log_lower = log.lower()
+        # Internal tool errors (EBMC crash, etc.)
+        internal_error_indicators = [
+            "invariant violation",
+            "invariant check failed",
+            "segmentation fault",
+            "aborted",
+            "internal error",
+        ]
+        for indicator in internal_error_indicators:
+            if indicator in log_lower:
+                return (True, False, f"EBMC internal error: {indicator}")
+        # Check for verification failure indicators (property refuted)
+        # "refuted" and "violated" in the context of property verification
+        # (but not "invariant violation" which is a tool error)
+        if "refuted" in log_lower or ("violated" in log_lower and "invariant" not in log_lower):
+            return (False, False, "")
+        # SVA/Verilog syntax errors - these indicate problems with the input SVA
+        syntax_error_indicators = [
+            ("syntax error", "Syntax error in SVA"),
+            ("parse error", "Parse error in SVA"),
+            ("parsing error", "Parsing error in SVA"),
+            ("expected", "Syntax error: unexpected token"),
+            ("expecting", "Syntax error: expecting element"),  # EBMC uses "expecting"
+            ("unexpected", "Syntax error: unexpected token"),
+            ("unterminated", "Syntax error: unterminated construct"),
+            ("missing", "Syntax error: missing element"),
+            ("invalid", "Syntax error: invalid construct"),
+            ("unrecognized", "Syntax error: unrecognized element"),
+            ("unknown identifier", "Unknown identifier in SVA"),
+            ("unknown preprocessor directive", "Syntax error: unknown preprocessor directive"),
+            ("undeclared", "Undeclared identifier in SVA"),
+            ("after backtick", "Syntax error: invalid backtick usage"),
+        ]
+        for indicator, msg in syntax_error_indicators:
+            if indicator in log_lower:
+                # Extract the actual error line from the log if possible
+                error_detail = self._extract_error_detail(log)
+                full_msg = f"{msg}: {error_detail}" if error_detail else msg
+                return (True, True, full_msg)
+        # General errors that could be syntax or tool issues
+        general_error_indicators = [
+            "error:",
+            "conversion error",
+            "type error",
+            "cannot open",
+            "file not found",
+        ]
+        for indicator in general_error_indicators:
+            if indicator in log_lower:
+                error_detail = self._extract_error_detail(log)
+                # Check if the error message suggests syntax issues
+                if any(hint in log_lower for hint in ["line", "column", "token", "character"]):
+                    return (True, True, f"SVA syntax error: {error_detail}" if error_detail else "SVA syntax error")
+                return (True, False, f"EBMC error: {error_detail}" if error_detail else "EBMC error")
+        return (False, False, "")
+
+    def _extract_error_detail(self, log: str) -> str:
+        """
+        Extract detailed error message from EBMC log.
+        
+        Args:
+            log: EBMC log output
+            
+        Returns:
+            Extracted error detail or empty string
+        """
+        lines = log.split('\n')
+        for line in lines:
+            line_lower = line.lower()
+            # Look for lines containing error information
+            if 'error' in line_lower or 'expected' in line_lower or 'unexpected' in line_lower:
+                # Clean up the line
+                line = line.strip()
+                if line and len(line) < 200:  # Avoid overly long lines
+                    return line
+        return ""
 
     def _is_tool_error(self, log: str) -> bool:
         """
@@ -560,28 +729,21 @@ endmodule
         Returns:
             True if it's a tool error, False if it's a verification failure
         """
-        error_indicators = [
-            "error:",
-            "syntax error",
-            "parse error",
-            "cannot open",
-            "file not found",
-            "unknown option",
-            "PARSING ERROR",
-            "type error",
-            "expected",
-        ]
-        log_lower = log.lower()
+        is_error, _, _ = self._categorize_error(log)
+        return is_error
+
+    def _is_syntax_error(self, log: str) -> Tuple[bool, str]:
+        """
+        Check if the log indicates a syntax error in the input SVA.
         
-        # Check for verification failure indicators first
-        if "refuted" in log_lower or "violated" in log_lower:
-            return False
-        
-        for indicator in error_indicators:
-            if indicator.lower() in log_lower:
-                return True
-        
-        return False
+        Args:
+            log: EBMC log output
+            
+        Returns:
+            Tuple of (is_syntax_error, error_message)
+        """
+        is_error, is_syntax, msg = self._categorize_error(log)
+        return (is_error and is_syntax, msg)
 
     def _extract_counterexample(self, log: str) -> Optional[str]:
         """
@@ -636,26 +798,61 @@ endmodule
             return CheckResult(
                 result=ImplicationResult.ERROR,
                 message=f"EBMC not found at '{self.ebmc_path}'. Please install EBMC or provide the correct path.",
+                module=None,
             )
+        
+        # Extract clock specifications from both SVAs
+        ant_clock_edge, ant_clock_name = self._extract_clock_spec(antecedent)
+        cons_clock_edge, cons_clock_name = self._extract_clock_spec(consequent)
+        
+        # Check for clock mismatch
+        if ant_clock_name != cons_clock_name or ant_clock_edge != cons_clock_edge:
+            # Use the antecedent's clock as the primary clock
+            if self.verbose:
+                print(f"Warning: Clock mismatch - antecedent uses @({ant_clock_edge} {ant_clock_name}), "
+                      f"consequent uses @({cons_clock_edge} {cons_clock_name}). Using antecedent's clock.")
+        
+        clock_edge = ant_clock_edge
+        clock_name = ant_clock_name
         
         # Extract property bodies from potentially complex SVA code
         ant_expr = self._extract_property_body(antecedent)
         cons_expr = self._extract_property_body(consequent)
         
         if self.verbose:
+            print(f"Clock: @({clock_edge} {clock_name})")
             print(f"Antecedent expression: {ant_expr}")
             print(f"Consequent expression: {cons_expr}")
         
-        # Collect all signals
+        # Check for unsupported SVA constructs early
+        unsupported_constructs = self._detect_unsupported_constructs(ant_expr, cons_expr)
+        if unsupported_constructs:
+            construct_descriptions = {
+                "if_else_property": "conditional property (if...else with implications)",
+            }
+            descriptions = [
+                construct_descriptions.get(c, c) for c in sorted(unsupported_constructs)
+            ]
+            return CheckResult(
+                result=ImplicationResult.ERROR,
+                message=f"EBMC Error: Unsupported SVA constructs detected: {', '.join(descriptions)}. "
+                        f"EBMC does not support these constructs.",
+                module=None,
+            )
+        
+        # Collect all signals, excluding the clock signal (it's declared as module port)
         signals = self._collect_all_signals(ant_expr, cons_expr)
+        signals.discard(clock_name)  # Don't redeclare the clock signal
         signal_decls = self._generate_signal_declarations(signals)
         
         # Handle $past and other temporal functions
         past_decls, past_logic, ant_expr, cons_expr = \
-            self._generate_past_signal_infrastructure(ant_expr, cons_expr)
+            self._generate_past_signal_infrastructure(ant_expr, cons_expr, clock_name)
         
-        # Generate module
+        # Generate module with the correct clock
         module_content = self.MODULE_TEMPLATE.format(
+            clock_name=clock_name,
+            clock_edge=clock_edge,
             signal_declarations=signal_decls,
             past_signal_declarations=past_decls,
             past_signal_logic=past_logic,
@@ -673,39 +870,65 @@ endmodule
         
         try:
             success, log = self._run_ebmc(module_content, "sva_checker", work_dir)
-            
+            # Handle timeout case (success is None)
+            if success is None:
+                return CheckResult(
+                    result=ImplicationResult.TIMEOUT,
+                    message=log,
+                    module=module_content,
+                )
             if success:
                 return CheckResult(
                     result=ImplicationResult.IMPLIES,
                     message="Antecedent implies consequent (proof passed)",
                     log=log,
+                    module=module_content,
                 )
             else:
-                # Check for syntax/execution errors vs verification failure
-                if self._is_tool_error(log):
+                # Categorize the error type
+                is_error, is_syntax_error, error_msg = self._categorize_error(log)
+                if is_error:
+                    # Check for unsupported functions in the expressions
+                    unsupported = self._detect_unsupported_functions(ant_expr, cons_expr)
+                    if unsupported:
+                        msg = f"EBMC Error: Unsupported SVA functions detected: {', '.join(sorted(unsupported))}. EBMC does not support these functions."
+                        result_type = ImplicationResult.ERROR
+                    elif is_syntax_error:
+                        # This is a syntax error in the input SVA
+                        msg = f"SVA Syntax Error: {error_msg}" if error_msg else "SVA Syntax Error: Invalid SVA syntax in input"
+                        result_type = ImplicationResult.SYNTAX_ERROR
+                    elif "invariant violation" in log.lower() or "invariant check failed" in log.lower():
+                        msg = "EBMC Error: Internal tool crash. The SVA may contain unsupported constructs."
+                        result_type = ImplicationResult.ERROR
+                    else:
+                        # Could still be a syntax error we didn't categorize
+                        msg = error_msg if error_msg else "EBMC Error: Check the generated module for syntax issues"
+                        result_type = ImplicationResult.ERROR
                     return CheckResult(
-                        result=ImplicationResult.ERROR,
-                        message=f"EBMC Error: Check the generated module for syntax issues",
-                        log=log
+                        result=result_type,
+                        message=msg,
+                        log=log,
+                        module=module_content,
                     )
-                
                 counterexample = self._extract_counterexample(log)
                 return CheckResult(
                     result=ImplicationResult.NOT_IMPLIES,
                     message="Antecedent does not imply consequent (counterexample found)",
                     counterexample=counterexample,
                     log=log,
+                    module=module_content,
                 )
-                
         except subprocess.TimeoutExpired:
             return CheckResult(
-                result=ImplicationResult.ERROR,
-                message="Verification timed out",
+                result=ImplicationResult.TIMEOUT,
+                message=f"Verification timed out after {self.timeout} seconds",
+                module=module_content if 'module_content' in locals() else None,
             )
         except Exception as e:
             return CheckResult(
                 result=ImplicationResult.ERROR,
                 message=f"Verification error: {str(e)}",
+                module=module_content if 'module_content' in locals() else None,
             )
         finally:
             if not self.keep_files and not self.work_dir:
@@ -722,16 +945,14 @@ endmodule
         Returns:
             CheckResult with the verification result
         """
+        error_results = (ImplicationResult.ERROR, ImplicationResult.SYNTAX_ERROR, ImplicationResult.TIMEOUT)
         # Check sva1 -> sva2
         result1 = self.check_implication(sva1, sva2)
-        
-        if result1.result == ImplicationResult.ERROR:
+        if result1.result in error_results:
             return result1
-        
         # Check sva2 -> sva1
         result2 = self.check_implication(sva2, sva1)
-        
-        if result2.result == ImplicationResult.ERROR:
+        if result2.result in error_results:
             return result2
         
         # Both directions must hold for equivalence
@@ -741,6 +962,7 @@ endmodule
                 result=ImplicationResult.EQUIVALENT,
                 message="SVAs are equivalent (bidirectional implication holds)",
                 log=f"Forward: {result1.log}\n\nBackward: {result2.log}",
+                module=f"=== Forward Check (sva1 -> sva2) ===\n{result1.module or 'N/A'}\n\n=== Backward Check (sva2 -> sva1) ===\n{result2.module or 'N/A'}",
             )
         else:
             directions = []
@@ -754,6 +976,7 @@ endmodule
                     result=ImplicationResult.NOT_IMPLIES,
                     message=f"SVAs are not equivalent. Only holds: {', '.join(directions)}",
                     log=f"Forward: {result1.log}\n\nBackward: {result2.log}",
+                    module=f"=== Forward Check (sva1 -> sva2) ===\n{result1.module or 'N/A'}\n\n=== Backward Check (sva2 -> sva1) ===\n{result2.module or 'N/A'}",
                 )
             else:
                 return CheckResult(
@@ -761,6 +984,7 @@ endmodule
                     message="SVAs are not equivalent (neither direction holds)",
                     counterexample=result1.counterexample or result2.counterexample,
                     log=f"Forward: {result1.log}\n\nBackward: {result2.log}",
+                    module=f"=== Forward Check (sva1 -> sva2) ===\n{result1.module or 'N/A'}\n\n=== Backward Check (sva2 -> sva1) ===\n{result2.module or 'N/A'}",
                 )
 
     def get_implication_relationship(
@@ -777,10 +1001,27 @@ endmodule
             
         Returns:
             Tuple of (sva1_implies_sva2, sva2_implies_sva1)
+            
+        Raises:
+            SVASyntaxError: If either SVA has invalid syntax
+            RuntimeError: If verification encounters an internal error or timeout
         """
         result1 = self.check_implication(sva1, sva2)
+        # Check for errors in the first direction
+        if result1.result == ImplicationResult.SYNTAX_ERROR:
+            raise SVASyntaxError(result1.message, result1.log)
+        elif result1.result == ImplicationResult.ERROR:
+            raise RuntimeError(f"Verification error: {result1.message}")
+        elif result1.result == ImplicationResult.TIMEOUT:
+            raise RuntimeError(f"Verification timeout: {result1.message}")
         result2 = self.check_implication(sva2, sva1)
-        
+        # Check for errors in the second direction
+        if result2.result == ImplicationResult.SYNTAX_ERROR:
+            raise SVASyntaxError(result2.message, result2.log)
+        elif result2.result == ImplicationResult.ERROR:
+            raise RuntimeError(f"Verification error: {result2.message}")
+        elif result2.result == ImplicationResult.TIMEOUT:
+            raise RuntimeError(f"Verification timeout: {result2.message}")
         return (
             result1.result == ImplicationResult.IMPLIES,
             result2.result == ImplicationResult.IMPLIES,

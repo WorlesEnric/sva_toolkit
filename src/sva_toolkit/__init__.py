@@ -6,6 +6,7 @@ __version__ = "0.1.0"
 
 from sva_toolkit.ast_parser import SVAASTParser, SVAStructure
 from sva_toolkit.implication_checker import SVAImplicationChecker
+from sva_toolkit.vcformal_implication_checker import VCFormalImplicationChecker
 from sva_toolkit.cot_builder import SVACoTBuilder
 from sva_toolkit.dataset_builder import DatasetBuilder
 from sva_toolkit.benchmark import BenchmarkRunner
@@ -14,6 +15,7 @@ __all__ = [
     "SVAASTParser",
     "SVAStructure",
     "SVAImplicationChecker",
+    "VCFormalImplicationChecker",
     "SVACoTBuilder",
     "DatasetBuilder",
     "BenchmarkRunner",

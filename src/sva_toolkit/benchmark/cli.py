@@ -25,38 +25,55 @@ def main(ctx):
 
 @main.command()
 @click.argument('dataset_file', type=click.Path(exists=True))
-@click.option('--base-url', required=True, help='LLM API base URL')
-@click.option('--model', required=True, help='LLM model name')
-@click.option('--api-key', required=True, help='LLM API key')
+@click.option('--base-url', default="https://api.siliconflow.cn/v1", help='LLM API base URL')
+@click.option('--model', default="Pro/deepseek-ai/DeepSeek-V3", help='LLM model name')
+@click.option('--api-key', default="sk-anwluomxfwjhiwpoyjhjnmwnfqobzbdjaigihjwjcvncjehq", help='LLM API key')
 @click.option('--output', '-o', type=click.Path(), help='Output file for detailed results')
-@click.option('--rate-limit', default=0.5, help='Delay between LLM calls (seconds)')
-@click.option('--sby-path', default='sby', help='Path to sby binary')
+@click.option('--rate-limit', default=0.5, help='Delay between LLM calls (seconds, single-process only)')
+@click.option('--ebmc-path', default=None, help='Path to ebmc binary')
 @click.option('--depth', default=20, help='Proof depth for verification')
-def run(dataset_file, base_url, model, api_key, output, rate_limit, sby_path, depth):
-    """Run benchmark on a single LLM."""
-    
+@click.option('--verible-path', default="/wkspace/sva_toolkit/3rd_party/verible_bin/verible-verilog-syntax", help='Path to verible-verilog-syntax binary')
+@click.option('--workers', '-w', default=4, help='Number of worker processes for parallel evaluation')
+@click.option('--cache-dir', type=click.Path(), help='Directory for caching progress (default: temp dir)')
+@click.option('--no-cache', is_flag=True, help='Disable caching (start fresh)')
+@click.option('--single-process', is_flag=True, help='Use single process mode (slower but simpler)')
+def run(dataset_file, base_url, model, api_key, output, rate_limit, ebmc_path, depth, verible_path, workers, cache_dir, no_cache, single_process):
+    """Run benchmark on a single LLM with multiprocessing support."""
     # Load dataset
     console.print(f"[blue]Loading dataset:[/blue] {dataset_file}")
     with open(dataset_file, 'r') as f:
         dataset = json.load(f)
-    
     # Filter dataset to only include items with both SVAD and SVA
     valid_items = [item for item in dataset if item.get("SVAD") and item.get("SVA")]
     console.print(f"[blue]Found {len(valid_items)} valid items with SVAD and SVA[/blue]")
-    
     if not valid_items:
         console.print("[red]No valid items found in dataset. Each item needs both 'SVAD' and 'SVA' fields.[/red]")
         return
-    
     # Create benchmark runner
     llm_config = LLMConfig(base_url=base_url, model=model, api_key=api_key)
     llm_client = LLMClient(llm_config)
-    
     from sva_toolkit.implication_checker import SVAImplicationChecker
-    checker = SVAImplicationChecker(sby_path=sby_path, depth=depth)
-    
-    runner = BenchmarkRunner(llm_clients=[llm_client], implication_checker=checker)
-    
+    checker = SVAImplicationChecker(ebmc_path=ebmc_path, depth=depth)
+    # Handle cache directory
+    effective_cache_dir = None if no_cache else cache_dir
+    runner = BenchmarkRunner(
+        llm_clients=[llm_client],
+        implication_checker=checker,
+        num_workers=workers,
+        cache_dir=effective_cache_dir,
+        verible_path=verible_path,
+    )
+    # Show cache info
+    cache_stats = runner.get_cache_stats()
+    if cache_stats["cached_items"] > 0:
+        console.print(f"[green]Found {cache_stats['cached_items']} cached results[/green]")
+    console.print(f"[dim]Cache directory: {runner.cache_dir}[/dim]")
+    # Show execution mode
+    use_multiprocessing = not single_process and workers > 1
+    if use_multiprocessing:
+        console.print(f"[blue]Running with {workers} worker processes[/blue]")
+    else:
+        console.print(f"[blue]Running in single-process mode[/blue]")
     # Run benchmark with progress
     with Progress(
         SpinnerColumn(),
@@ -66,15 +83,14 @@ def run(dataset_file, base_url, model, api_key, output, rate_limit, sby_path, de
         console=console,
     ) as progress:
         task = progress.add_task(f"Benchmarking {model}...", total=len(valid_items))
-        
-        def progress_callback(current, total):
+        def progress_callback(current: int, total: int) -> None:
             progress.update(task, completed=current)
-        
         result = runner.run_benchmark(
             valid_items,
             llm_client,
             progress_callback=progress_callback,
             rate_limit_delay=rate_limit,
+            use_multiprocessing=use_multiprocessing,
         )
     
     # Display results
@@ -95,6 +111,16 @@ def run(dataset_file, base_url, model, api_key, output, rate_limit, sby_path, de
                     "verification_time": r.verification_time,
                 }
                 for r in result.individual_results
+            ],
+            "sva_pairs": [
+                {
+                    "SVA1": r.reference_sva,
+                    "SVA2": r.generated_sva,
+                    "SVAD": r.svad,
+                    "CoT": r.cot,
+                    "relationship": r.relationship.value,
+                }
+                for r in result.individual_results
             ]
         }
         with open(output, 'w') as f:
@@ -107,34 +133,49 @@ def run(dataset_file, base_url, model, api_key, output, rate_limit, sby_path, de
 @click.option('--config-file', required=True, type=click.Path(exists=True),
               help='JSON file with LLM configurations')
 @click.option('--output', '-o', type=click.Path(), help='Output file for detailed results')
-@click.option('--rate-limit', default=0.5, help='Delay between LLM calls (seconds)')
-def run_multi(dataset_file, config_file, output, rate_limit):
-    """Run benchmark on multiple LLMs."""
-    
+@click.option('--rate-limit', default=0.5, help='Delay between LLM calls (seconds, single-process only)')
+@click.option('--verible-path', default="verible-verilog-syntax", help='Path to verible-verilog-syntax binary')
+@click.option('--workers', '-w', default=4, help='Number of worker processes for parallel evaluation')
+@click.option('--cache-dir', type=click.Path(), help='Directory for caching progress (default: temp dir)')
+@click.option('--no-cache', is_flag=True, help='Disable caching (start fresh)')
+@click.option('--single-process', is_flag=True, help='Use single process mode (slower but simpler)')
+def run_multi(dataset_file, config_file, output, rate_limit, verible_path, workers, cache_dir, no_cache, single_process):
+    """Run benchmark on multiple LLMs with multiprocessing support."""
     # Load dataset
     console.print(f"[blue]Loading dataset:[/blue] {dataset_file}")
     with open(dataset_file, 'r') as f:
         dataset = json.load(f)
-    
     valid_items = [item for item in dataset if item.get("SVAD") and item.get("SVA")]
     console.print(f"[blue]Found {len(valid_items)} valid items[/blue]")
-    
     # Load LLM configs
     console.print(f"[blue]Loading LLM configs:[/blue] {config_file}")
     with open(config_file, 'r') as f:
         llm_configs = json.load(f)
-    
     console.print(f"[blue]Found {len(llm_configs)} LLM configurations[/blue]")
-    
-    # Create runner
-    runner = BenchmarkRunner.from_configs(llm_configs)
-    
+    # Handle cache directory
+    effective_cache_dir = None if no_cache else cache_dir
+    # Create runner with multiprocessing support
+    runner = BenchmarkRunner.from_configs(
+        llm_configs,
+        num_workers=workers,
+        cache_dir=effective_cache_dir,
+        verible_path=verible_path,
+    )
+    # Show cache info
+    cache_stats = runner.get_cache_stats()
+    if cache_stats["cached_items"] > 0:
+        console.print(f"[green]Found {cache_stats['cached_items']} cached results[/green]")
+    console.print(f"[dim]Cache directory: {runner.cache_dir}[/dim]")
+    # Show execution mode
+    use_multiprocessing = not single_process and workers > 1
+    if use_multiprocessing:
+        console.print(f"[blue]Running with {workers} worker processes[/blue]")
+    else:
+        console.print(f"[blue]Running in single-process mode[/blue]")
     all_results = []
-    
     for i, (llm_client, config) in enumerate(zip(runner.llm_clients, llm_configs)):
         model_name = config["model"]
         console.print(f"\n[bold blue]═══ Benchmarking Model {i+1}/{len(llm_configs)}: {model_name} ═══[/bold blue]")
-        
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -143,18 +184,16 @@ def run_multi(dataset_file, config_file, output, rate_limit):
             console=console,
         ) as progress:
             task = progress.add_task(f"Running {model_name}...", total=len(valid_items))
-            
-            def progress_callback(current, total):
+            def progress_callback(current: int, total: int) -> None:
                 progress.update(task, completed=current)
-            
             result = runner.run_benchmark(
                 valid_items,
                 llm_client,
                 progress_callback=progress_callback,
                 rate_limit_delay=rate_limit,
+                use_multiprocessing=use_multiprocessing,
             )
             all_results.append(result)
-        
         _display_benchmark_result(result)
     
     # Display comparison
@@ -166,6 +205,19 @@ def run_multi(dataset_file, config_file, output, rate_limit):
         output_data = {
             "comparison": BenchmarkRunner.compare_results(all_results),
             "results": [r.to_dict() for r in all_results],
+            "sva_pairs_by_model": {
+                result.model_name: [
+                    {
+                        "SVA1": r.reference_sva,
+                        "SVA2": r.generated_sva,
+                        "SVAD": r.svad,
+                        "CoT": r.cot,
+                        "relationship": r.relationship.value,
+                    }
+                    for r in result.individual_results
+                ]
+                for result in all_results
+            }
         }
         with open(output, 'w') as f:
             json.dump(output_data, indent=2, fp=f)
@@ -198,6 +250,32 @@ def stats(dataset_file):
     table.add_row("Has CoT", str(has_cot), f"{has_cot/total*100:.1f}%" if total > 0 else "N/A")
     
     console.print(table)
+
+
+@main.command('clear-cache')
+@click.argument('cache_dir', type=click.Path(exists=True))
+@click.option('--force', '-f', is_flag=True, help='Skip confirmation prompt')
+def clear_cache(cache_dir: str, force: bool) -> None:
+    """Clear benchmark cache directory."""
+    import os
+    import shutil
+    cache_files = [f for f in os.listdir(cache_dir) if f.endswith('.json')]
+    if not cache_files:
+        console.print(f"[yellow]No cache files found in {cache_dir}[/yellow]")
+        return
+    console.print(f"[blue]Found {len(cache_files)} cache files in {cache_dir}[/blue]")
+    if not force:
+        if not click.confirm("Are you sure you want to delete these cache files?"):
+            console.print("[yellow]Aborted.[/yellow]")
+            return
+    deleted = 0
+    for f in cache_files:
+        try:
+            os.remove(os.path.join(cache_dir, f))
+            deleted += 1
+        except OSError as e:
+            console.print(f"[red]Failed to delete {f}: {e}[/red]")
+    console.print(f"[green]Deleted {deleted} cache files.[/green]")
 
 
 def _display_benchmark_result(result: BenchmarkResult):

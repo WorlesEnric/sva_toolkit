@@ -29,9 +29,11 @@ dev = [
 [project.scripts]
 sva-ast = "sva_toolkit.ast_parser.cli:main"
 sva-implication = "sva_toolkit.implication_checker.cli:main"
+sva-vcformal-implication = "sva_toolkit.vcformal_implication_checker.cli:main"
 sva-cot = "sva_toolkit.cot_builder.cli:main"
 sva-dataset = "sva_toolkit.dataset_builder.cli:main"
 sva-benchmark = "sva_toolkit.benchmark.cli:main"
+sva-gen = "sva_toolkit.gen.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
