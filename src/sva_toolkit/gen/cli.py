@@ -15,7 +15,8 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 from typing import List, Optional
 
-from sva_toolkit.gen.generator import SVASynthesizer, GenerationResult, ValidationResult
+from sva_toolkit.gen.generator import SVASynthesizer, GenerationResult, ValidationResult, SVAProperty
+from sva_toolkit.gen.stratified import StratifiedGenerator
 from sva_toolkit.gen.utils import (
     DEFAULT_SIGNALS,
     HANDSHAKE_SIGNALS,
@@ -62,7 +63,7 @@ def main(ctx: click.Context, verible_path: str) -> None:
 )
 @click.option(
     "-d", "--max-depth",
-    default=4,
+    default=2,
     type=int,
     help="Maximum recursion depth for expression generation"
 )
@@ -108,6 +109,18 @@ def main(ctx: click.Context, verible_path: str) -> None:
     default=None,
     help="Random seed for reproducibility"
 )
+@click.option(
+    "--mode",
+    type=click.Choice(['random', 'stratified']),
+    default='random',
+    help="Generation mode: 'random' for probabilistic, 'stratified' for guaranteed coverage"
+)
+@click.option(
+    "--samples-per-construct",
+    type=int,
+    default=50,
+    help="For stratified mode: minimum samples per construct"
+)
 @click.pass_context
 def generate(
     ctx: click.Context,
@@ -120,29 +133,67 @@ def generate(
     clock: str,
     validate: bool,
     json_output: bool,
-    seed: Optional[int]
+    seed: Optional[int],
+    mode: str,
+    samples_per_construct: int
 ) -> None:
     """Generate SVA properties and wrap in a SystemVerilog module."""
     import random
     if seed is not None:
         random.seed(seed)
         console.print(f"[dim]Using random seed: {seed}[/dim]")
+
     # Determine signals to use
     if signals:
         signal_list = list(signals)
     else:
         signal_list = SIGNAL_PRESETS[preset]
+
     verible_path = ctx.obj["verible_path"]
-    console.print(f"[bold blue]SVA Generator[/bold blue]")
+
+    # Handle stratified mode
+    if mode == 'stratified':
+        console.print(f"[bold blue]SVA Generator - Stratified Mode[/bold blue]")
+        console.print(f"  Mode: Guaranteed coverage of all constructs")
+        console.print(f"  Samples per construct: {samples_per_construct}")
+        console.print(f"  Signals: {', '.join(signal_list)}")
+        console.print()
+
+        generator = StratifiedGenerator(
+            signals=signal_list,
+            clock_signal=clock,
+            max_depth=max_depth,
+            samples_per_construct=samples_per_construct,
+            verible_path=verible_path
+        )
+
+        properties = generator.generate_stratified_dataset()
+
+        # Create result
+        result = GenerationResult(
+            properties=properties,
+            module_code="",  # No module in stratified mode
+            validation=None,
+            valid_count=len(properties),
+            invalid_count=0
+        )
+
+        _display_generation_result(result, json_output, output)
+        return
+
+    # Random mode (original behavior)
+    console.print(f"[bold blue]SVA Generator - Random Mode[/bold blue]")
     console.print(f"  Target: {num_assertions} properties, Max Depth: {max_depth}")
     console.print(f"  Signals: {', '.join(signal_list)}")
     console.print(f"  Verible: {verible_path}")
+
     synthesizer = SVASynthesizer(
         signals=signal_list,
         max_depth=max_depth,
         clock_signal=clock,
         verible_path=verible_path
     )
+
     if validate:
         result = synthesizer.generate_validated(
             module_name=module_name,
@@ -154,16 +205,14 @@ def generate(
             module_name=module_name,
             num_assertions=num_assertions
         )
-        if json_output:
-            output_data = {
-                "module_code": module_code,
-                "properties": properties,
-                "validation": None
-            }
-            _write_output(json.dumps(output_data, indent=2), output)
-        else:
-            _write_output(module_code, output)
-            console.print(f"[green]✓[/green] Generated {len(properties)} properties")
+        result = GenerationResult(
+            properties=properties,
+            module_code=module_code,
+            validation=None,
+            valid_count=len(properties),
+            invalid_count=0
+        )
+        _display_generation_result(result, json_output, output)
 
 
 @main.command()
@@ -311,9 +360,20 @@ def _display_generation_result(
 ) -> None:
     """Display generation result in appropriate format."""
     if json_output:
+        # Convert SVAProperty objects to dictionaries for JSON serialization
+        properties_list = [
+            {
+                "name": prop.name,
+                "sva": prop.sva_code,
+                "svad": prop.svad,
+                "property_block": prop.property_block
+            }
+            for prop in result.properties
+        ]
+
         output_data = {
+            "properties": properties_list,
             "module_code": result.module_code,
-            "properties": result.properties,
             "validation": {
                 "is_valid": result.validation.is_valid if result.validation else None,
                 "error_message": result.validation.error_message if result.validation else None
@@ -321,7 +381,14 @@ def _display_generation_result(
             "valid_count": result.valid_count,
             "invalid_count": result.invalid_count
         }
-        _write_output(json.dumps(output_data, indent=2), output_path)
+
+        if output_path:
+            with open(output_path, "w") as f:
+                json.dump(output_data, f, indent=2)
+            console.print(f"[dim]JSON output written to: {output_path}[/dim]")
+            console.print(f"[green]✓[/green] Generated {len(result.properties)} SVA-SVAD pairs")
+        else:
+            console.print(json.dumps(output_data, indent=2))
     else:
         _write_output(result.module_code, output_path)
         if result.validation:

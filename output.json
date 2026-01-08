@@ -1,0 +1,71 @@
+{
+  "properties": [
+    {
+      "name": "p_gen_0",
+      "sva": "disable iff (busy) (((($stable(req)[->2:$]) throughout first_match($changed(ack))) intersect (ready !== data_en)) |-> ($countones(data_en) ##[0:1] first_match(data_en)))",
+      "svad": "whenever signal 'req' remains stable occurs at least 2 times with goto holds throughout the first match of signal 'ack' changes value intersects with signal 'ready' does not equal signal 'data_en' (including X/Z), then in the same cycle, count of ones in signal 'data_en', then between 0 and 1 cycles later, the first match of signal 'data_en', but disabled when signal 'busy'",
+      "property_block": "property p_gen_0;\n  @(posedge clk) disable iff (busy) (((($stable(req)[->2:$]) throughout first_match($changed(ack))) intersect (ready !== data_en)) |-> ($countones(data_en) ##[0:1] first_match(data_en)));\nendproperty"
+    },
+    {
+      "name": "p_gen_1",
+      "sva": "((req !== $past(valid, 2)) && (busy && $onehot(valid))) |=> first_match(($rose(gnt) ##[0:3] $stable(valid)))",
+      "svad": "whenever signal 'req' does not equal the value of signal 'valid' 2 cycles ago (including X/Z) AND signal 'busy' AND exactly one bit is high in signal 'valid', then in the next cycle, the first match of signal 'gnt' rises from 0 to 1, then between 0 and 3 cycles later, signal 'valid' remains stable",
+      "property_block": "property p_gen_1;\n  @(posedge clk) ((req !== $past(valid, 2)) && (busy && $onehot(valid))) |=> first_match(($rose(gnt) ##[0:3] $stable(valid)));\nendproperty"
+    },
+    {
+      "name": "p_gen_2",
+      "sva": "(($rose(valid) intersect ($stable(ready) and gnt)) |-> ((ack).ended ##[0:$] (ack ##[1:3] $changed(req))) or (first_match(data_en) intersect ((ready).ended[=4])) |=> ($past(ack, 1) != valid))",
+      "svad": "whenever signal 'valid' rises from 0 to 1 intersects with signal 'ready' remains stable and signal 'gnt', then in the same cycle, signal 'ack' has ended, then eventually, signal 'ack', then between 1 and 3 cycles later, signal 'req' changes value OR whenever the first match of signal 'data_en' intersects with signal 'ready' has ended occurs 4 times non-consecutively, then in the next cycle, the previous value of signal 'ack' does not equal signal 'valid'",
+      "property_block": "property p_gen_2;\n  @(posedge clk) (($rose(valid) intersect ($stable(ready) and gnt)) |-> ((ack).ended ##[0:$] (ack ##[1:3] $changed(req))) or (first_match(data_en) intersect ((ready).ended[=4])) |=> ($past(ack, 1) != valid));\nendproperty"
+    },
+    {
+      "name": "p_gen_3",
+      "sva": "(((ready and $onehot0(gnt)) |=> ($stable(ready) ##[0:3] ($onehot(req)).ended) or first_match($rose(gnt)) |=> first_match(busy)) or (($onehot(valid) throughout $rose(data_en)) ##[0:3] (busy ##1 (data_en).ended)) |-> ((valid intersect $stable(valid))[=2:5]))",
+      "svad": "whenever signal 'ready' and at most one bit is high in signal 'gnt', then in the next cycle, signal 'ready' remains stable, then between 0 and 3 cycles later, exactly one bit is high in signal 'req' has ended OR whenever the first match of signal 'gnt' rises from 0 to 1, then in the next cycle, the first match of signal 'busy' OR whenever exactly one bit is high in signal 'valid' holds throughout signal 'data_en' rises from 0 to 1, then between 0 and 3 cycles later, signal 'busy', then 1 cycle later, signal 'data_en' has ended, then in the same cycle, signal 'valid' intersects with signal 'valid' remains stable occurs between 2 and 5 times non-consecutively",
+      "property_block": "property p_gen_3;\n  @(posedge clk) (((ready and $onehot0(gnt)) |=> ($stable(ready) ##[0:3] ($onehot(req)).ended) or first_match($rose(gnt)) |=> first_match(busy)) or (($onehot(valid) throughout $rose(data_en)) ##[0:3] (busy ##1 (data_en).ended)) |-> ((valid intersect $stable(valid))[=2:5]));\nendproperty"
+    },
+    {
+      "name": "p_gen_4",
+      "sva": "(!$countones(valid)) |=> ((valid || busy) or (valid[->5:8]))",
+      "svad": "whenever NOT count of ones in signal 'valid', then in the next cycle, signal 'valid' OR signal 'busy' or signal 'valid' occurs between 5 and 8 times with goto",
+      "property_block": "property p_gen_4;\n  @(posedge clk) (!$countones(valid)) |=> ((valid || busy) or (valid[->5:8]));\nendproperty"
+    },
+    {
+      "name": "p_gen_5",
+      "sva": "((data_en ^~ busy) === (busy ^~ ready)) |-> (gnt || (!ack))",
+      "svad": "whenever signal 'data_en' bitwise-XNOR signal 'busy' equals signal 'busy' bitwise-XNOR signal 'ready' (including X/Z), then in the same cycle, signal 'gnt' OR NOT signal 'ack'",
+      "property_block": "property p_gen_5;\n  @(posedge clk) ((data_en ^~ busy) === (busy ^~ ready)) |-> (gnt || (!ack));\nendproperty"
+    },
+    {
+      "name": "p_gen_6",
+      "sva": "(first_match(((data_en).ended ##[1:3] busy)) intersect (ready and (gnt intersect $stable(valid)))) |=> ((first_match(req) ##[2:4] ($changed(req) throughout valid))[->5:6])",
+      "svad": "whenever the first match of signal 'data_en' has ended, then between 1 and 3 cycles later, signal 'busy' intersects with signal 'ready' and signal 'gnt' intersects with signal 'valid' remains stable, then in the next cycle, the first match of signal 'req', then between 2 and 4 cycles later, signal 'req' changes value holds throughout signal 'valid' occurs between 5 and 6 times with goto",
+      "property_block": "property p_gen_6;\n  @(posedge clk) (first_match(((data_en).ended ##[1:3] busy)) intersect (ready and (gnt intersect $stable(valid)))) |=> ((first_match(req) ##[2:4] ($changed(req) throughout valid))[->5:6]);\nendproperty"
+    },
+    {
+      "name": "p_gen_7",
+      "sva": "(valid[->1:3]) |=> gnt",
+      "svad": "whenever signal 'valid' occurs between 1 and 3 times with goto, then in the next cycle, signal 'gnt'",
+      "property_block": "property p_gen_7;\n  @(posedge clk) (valid[->1:3]) |=> gnt;\nendproperty"
+    },
+    {
+      "name": "p_gen_8",
+      "sva": "(((($isunknown(ack) or $onehot(ack))[=4:5]) ##[1:3] (!valid)) until ((req <= ready)[->2]))",
+      "svad": "signal 'ack' is unknown (X or Z) or exactly one bit is high in signal 'ack' occurs between 4 and 5 times non-consecutively, then between 1 and 3 cycles later, NOT signal 'valid' until signal 'req' is less than or equal to signal 'ready' occurs 2 times with goto",
+      "property_block": "property p_gen_8;\n  @(posedge clk) (((($isunknown(ack) or $onehot(ack))[=4:5]) ##[1:3] (!valid)) until ((req <= ready)[->2]));\nendproperty"
+    },
+    {
+      "name": "p_gen_9",
+      "sva": "(((data_en and $onehot(valid))[->2])[*4:6]) |-> $countones(ack)",
+      "svad": "whenever signal 'data_en' and exactly one bit is high in signal 'valid' occurs 2 times with goto occurs between 4 and 6 times consecutively, then in the same cycle, count of ones in signal 'ack'",
+      "property_block": "property p_gen_9;\n  @(posedge clk) (((data_en and $onehot(valid))[->2])[*4:6]) |-> $countones(ack);\nendproperty"
+    }
+  ],
+  "module_code": "module sva_test_bench (\n  input logic clk,\n  input logic rst_n\n);\n\n  // Signal Declarations\n  logic req;\n  logic ack;\n  logic gnt;\n  logic valid;\n  logic ready;\n  logic data_en;\n  logic busy;\n\n  // Generated Properties\n  property p_gen_0;\n  @(posedge clk) disable iff (busy) (((($stable(req)[->2:$]) throughout first_match($changed(ack))) intersect (ready !== data_en)) |-> ($countones(data_en) ##[0:1] first_match(data_en)));\nendproperty\n\n  property p_gen_1;\n  @(posedge clk) ((req !== $past(valid, 2)) && (busy && $onehot(valid))) |=> first_match(($rose(gnt) ##[0:3] $stable(valid)));\nendproperty\n\n  property p_gen_2;\n  @(posedge clk) (($rose(valid) intersect ($stable(ready) and gnt)) |-> ((ack).ended ##[0:$] (ack ##[1:3] $changed(req))) or (first_match(data_en) intersect ((ready).ended[=4])) |=> ($past(ack, 1) != valid));\nendproperty\n\n  property p_gen_3;\n  @(posedge clk) (((ready and $onehot0(gnt)) |=> ($stable(ready) ##[0:3] ($onehot(req)).ended) or first_match($rose(gnt)) |=> first_match(busy)) or (($onehot(valid) throughout $rose(data_en)) ##[0:3] (busy ##1 (data_en).ended)) |-> ((valid intersect $stable(valid))[=2:5]));\nendproperty\n\n  property p_gen_4;\n  @(posedge clk) (!$countones(valid)) |=> ((valid || busy) or (valid[->5:8]));\nendproperty\n\n  property p_gen_5;\n  @(posedge clk) ((data_en ^~ busy) === (busy ^~ ready)) |-> (gnt || (!ack));\nendproperty\n\n  property p_gen_6;\n  @(posedge clk) (first_match(((data_en).ended ##[1:3] busy)) intersect (ready and (gnt intersect $stable(valid)))) |=> ((first_match(req) ##[2:4] ($changed(req) throughout valid))[->5:6]);\nendproperty\n\n  property p_gen_7;\n  @(posedge clk) (valid[->1:3]) |=> gnt;\nendproperty\n\n  property p_gen_8;\n  @(posedge clk) (((($isunknown(ack) or $onehot(ack))[=4:5]) ##[1:3] (!valid)) until ((req <= ready)[->2]));\nendproperty\n\n  property p_gen_9;\n  @(posedge clk) (((data_en and $onehot(valid))[->2])[*4:6]) |-> $countones(ack);\nendproperty\n\n  // Assertion Instances\n  assert_p0: assert property (p_gen_0);\n  assert_p1: assert property (p_gen_1);\n  assert_p2: assert property (p_gen_2);\n  assert_p3: assert property (p_gen_3);\n  assert_p4: assert property (p_gen_4);\n  assert_p5: assert property (p_gen_5);\n  assert_p6: assert property (p_gen_6);\n  assert_p7: assert property (p_gen_7);\n  assert_p8: assert property (p_gen_8);\n  assert_p9: assert property (p_gen_9);\n\nendmodule\n",
+  "validation": {
+    "is_valid": false,
+    "error_message": "-:17:73-83: syntax error at token \"first_match\"\n-:18:1-11: syntax error at token \"endproperty\"\n-:22:1-11: syntax error at token \"endproperty\"\n-:26:1-11: syntax error at token \"endproperty\"\n-:30:1-11: syntax error at token \"endproperty\"\n-:34:1-11: syntax error at token \"endproperty\"\n-:38:1-11: syntax error at token \"endproperty\"\n-:42:1-11: syntax error at token \"endproperty\"\n-:46:1-11: syntax error at token \"endproperty\"\n-:50:1-11: syntax error at token \"endproperty\"\n-:54:1-11: syntax error at token \"endproperty\""
+  },
+  "valid_count": 0,
+  "invalid_count": 10
+}

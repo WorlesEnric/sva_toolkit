@@ -1,0 +1,80 @@
+================================================================================
+COMPREHENSIVE COMPARISON: Old vs. New NL Generation
+================================================================================
+
+================================================================================
+SIMPLE CASES
+================================================================================
+
+Signal:
+  SVA:  req
+  OLD:  signal 'req'
+  NEW:  The request signal.
+  Improvement: -7 chars
+
+Binary Comparison:
+  SVA:  (req == ack)
+  OLD:  signal 'req' equals signal 'ack'
+  NEW:  The request signal equals the acknowledge signal.
+  Improvement: -17 chars
+
+System Function ($rose):
+  SVA:  $rose(req)
+  OLD:  signal 'req' rises from 0 to 1
+  NEW:  The request signal rises from low to high.
+  Improvement: -12 chars
+
+Simple Implication (overlapping):
+  SVA:  req |-> ack
+  OLD:  When signal 'req', then in the same cycle: signal 'ack'.
+  NEW:  When the request signal, the acknowledge signal must occur in the same cycle.
+  Improvement: -21 chars
+
+Simple Implication (non-overlapping):
+  SVA:  req |=> ack
+  OLD:  When signal 'req', then in the next cycle: signal 'ack'.
+  NEW:  When the request signal, the acknowledge signal must occur in the next cycle.
+  Improvement: -21 chars
+
+================================================================================
+MODERATE COMPLEXITY
+================================================================================
+
+Sequence with delay:
+  SVA:  (req ##1 ack)
+  OLD:  (signal 'req'), then 1 cycle later, (signal 'ack')
+  NEW:  The request signal, then in the next cycle, the acknowledge signal.
+  Improvement: -17 chars
+
+Sequence repeat (consecutive):
+  SVA:  (req[*[3])
+  OLD:  signal 'req' occurs [3 times consecutively
+  NEW:  The request signal occurs 3 times consecutively.
+  Improvement: -6 chars
+
+Implication with $rose trigger:
+  SVA:  $rose(req) |-> ack
+  OLD:  When signal 'req' rises from 0 to 1, then in the same cycle: signal 'ack'.
+  NEW:  When the request signal rises from low to high, the acknowledge signal must occur in the same cycle.
+  Improvement: -26 chars
+Traceback (most recent call last):
+  File "/Users/wangqihang/Desktop/sva_toolkit/test_sva_trans.py", line 149, in <module>
+    main()
+  File "/Users/wangqihang/Desktop/sva_toolkit/test_sva_trans.py", line 82, in main
+    compare_nl_systems("Property with disable iff", disable)
+  File "/Users/wangqihang/Desktop/sva_toolkit/test_sva_trans.py", line 18, in compare_nl_systems
+    new_nl = sva_to_english(node)
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wangqihang/Desktop/sva_toolkit/src/sva_toolkit/gen/nl/realizer.py", line 98, in sva_to_english
+    return realizer.realize(node)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wangqihang/Desktop/sva_toolkit/src/sva_toolkit/gen/nl/realizer.py", line 38, in realize
+    semantics = self.extractor.extract(node)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wangqihang/Desktop/sva_toolkit/src/sva_toolkit/gen/nl/extractor.py", line 30, in extract
+    return method(node)
+           ^^^^^^^^^^^^
+  File "/Users/wangqihang/Desktop/sva_toolkit/src/sva_toolkit/gen/nl/extractor.py", line 290, in extract_DisableIff
+    prop = self.extract(node.property)
+                        ^^^^^^^^^^^^^
+AttributeError: 'DisableIff' object has no attribute 'property'

@@ -8,6 +8,10 @@ from sva_toolkit.gen.generator import (
     SVASynthesizer,
     GenerationResult,
     ValidationResult,
+    SVAProperty,
+)
+from sva_toolkit.gen.stratified import (
+    StratifiedGenerator,
 )
 from sva_toolkit.gen.types_sva import (
     SVANode,
@@ -49,6 +53,8 @@ __all__ = [
     "SVASynthesizer",
     "GenerationResult",
     "ValidationResult",
+    "SVAProperty",
+    "StratifiedGenerator",
     # Type nodes
     "SVANode",
     "SVAType",
