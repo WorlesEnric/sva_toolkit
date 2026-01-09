@@ -19,31 +19,11 @@ class NaturalLanguageRealizer:
 
     def realize(self, node: Any) -> str:
         """
-        Convert SVA AST node to natural language.
-
-        This is the main entry point for the SVATrans system.
-        It performs a three-stage transformation:
-
-        1. Extract semantics from AST (node → IR)
-        2. Select and apply appropriate template (IR → text)
-        3. Post-process for fluency (text → polished text)
-
-        Args:
-            node: SVA AST node (SVANode subclass)
-
-        Returns:
-            Natural language description as a string
+        Convert SVA AST node to natural language using Symbolic SVAD.
         """
-        # Stage 1: Extract semantics
-        semantics = self.extractor.extract(node)
-
-        # Stage 2: Realize using templates
-        text = self.templates.realize(semantics)
-
-        # Stage 3: Post-process
-        text = self._post_process(text)
-
-        return text
+        from sva_toolkit.gen.nl.symbolic import SymbolicSVADGenerator
+        generator = SymbolicSVADGenerator()
+        return generator.generate(node)
 
     def _post_process(self, text: str) -> str:
         """
