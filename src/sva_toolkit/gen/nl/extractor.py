@@ -94,9 +94,9 @@ class SemanticExtractor:
 
     def extract_TernaryOp(self, node: Any) -> SVASemantics:
         """Extract semantics from TernaryOp node (? :)."""
-        cond = self.extract(node.cond)
-        true_val = self.extract(node.true_val)
-        false_val = self.extract(node.false_val)
+        cond = self.extract(node.condition)
+        true_val = self.extract(node.true_expr)
+        false_val = self.extract(node.false_expr)
 
         return SVASemantics(
             description=f"if {cond.description} then {true_val.description} else {false_val.description}",
@@ -131,8 +131,8 @@ class SemanticExtractor:
 
     def extract_PastFunction(self, node: Any) -> SVASemantics:
         """Extract semantics from PastFunction node ($past)."""
-        arg = self.extract(node.arg)
-        depth = node.depth
+        arg = self.extract(node.signal)
+        depth = node.depth if node.depth is not None else 1
 
         if depth == 1:
             desc = f"the value of {arg.description} from the previous cycle"
@@ -237,7 +237,7 @@ class SemanticExtractor:
 
     def extract_SequenceFirstMatch(self, node: Any) -> SVASemantics:
         """Extract semantics from SequenceFirstMatch node."""
-        seq = self.extract(node.seq)
+        seq = self.extract(node.sequence)
         return SVASemantics(
             description=f"the first match of {seq.description}",
             complexity="moderate",
@@ -246,7 +246,7 @@ class SemanticExtractor:
 
     def extract_SequenceEnded(self, node: Any) -> SVASemantics:
         """Extract semantics from SequenceEnded node."""
-        seq = self.extract(node.seq)
+        seq = self.extract(node.sequence)
         return SVASemantics(
             description=f"{seq.description} has ended",
             node_type="SequenceEnded"
@@ -316,9 +316,9 @@ class SemanticExtractor:
 
     def extract_PropertyIfElse(self, node: Any) -> SVASemantics:
         """Extract semantics from PropertyIfElse node."""
-        cond = self.extract(node.cond)
+        cond = self.extract(node.condition)
         true_prop = self.extract(node.true_prop)
-        false_prop = self.extract(node.false_prop) if node.false_prop else None
+        false_prop = self.extract(node.false_prop) if hasattr(node, 'false_prop') and node.false_prop else None
 
         return SVASemantics(
             conditional_on=cond.description,
@@ -365,12 +365,16 @@ class SignalFormatter:
 
     # Common signal name expansions
     SIGNAL_EXPANSIONS = {
-        "req": "request",
-        "ack": "acknowledge",
-        "gnt": "grant",
-        "clk": "clock",
-        "rst": "reset",
-        "en": "enable",
+        "req": "request (req)",
+        "ack": "acknowledge (ack)",
+        "gnt": "grant (gnt)",
+        "clk": "clock (clk)",
+        "rst": "reset (rst)",
+        "en": "enable (en)",
+        "data_en": "data enable (data_en)",
+        "addr": "address (addr)",
+        "we": "write enable (we)",
+        "re": "read enable (re)",
     }
 
     def format(self, signal_name: str, as_subject: bool = True) -> str:

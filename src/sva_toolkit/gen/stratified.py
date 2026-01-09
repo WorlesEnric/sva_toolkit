@@ -409,11 +409,14 @@ class StratifiedGenerator:
     def generate_stratified_dataset(self) -> List[SVAProperty]:
         """
         Generate a stratified dataset with guaranteed coverage.
+        Each property is individually validated, and only valid ones are included.
 
         Returns:
-            List of SVAProperty objects covering all constructs
+            List of SVAProperty objects covering all constructs (only valid ones)
         """
         properties = []
+        invalid_count = 0
+        max_retries_per_sample = 3
 
         # Collect all construct generators
         all_constructs = (
@@ -429,7 +432,7 @@ class StratifiedGenerator:
         print(f"Generating stratified dataset:")
         print(f"  Total constructs: {len(all_constructs)}")
         print(f"  Samples per construct: {self.samples_per_construct}")
-        print(f"  Total samples: {len(all_constructs) * self.samples_per_construct}")
+        print(f"  Target samples: {len(all_constructs) * self.samples_per_construct}")
         print()
 
         for keyword, method_name in all_constructs:
@@ -438,40 +441,55 @@ class StratifiedGenerator:
 
             print(f"Generating {self.samples_per_construct} samples for '{keyword}'... ", end='', flush=True)
 
+            valid_samples = 0
             for i in range(self.samples_per_construct):
-                try:
-                    # Generate property with this construct
-                    prop_node = generator_method()
+                validated = False
 
-                    # Convert to SVAProperty
-                    sva_code = str(prop_node)
-                    svad = prop_node.to_natural_language()
-                    name = f"p_{self.property_counter}"
+                # Try to generate a valid property with retries
+                for attempt in range(max_retries_per_sample):
+                    try:
+                        # Generate property with this construct
+                        prop_node = generator_method()
 
-                    property_block = (
-                        f"property {name};\n"
-                        f"  @(posedge {self.synth.clock_signal}) {sva_code};\n"
-                        f"endproperty"
-                    )
+                        # Convert to SVAProperty
+                        sva_code = str(prop_node)
+                        svad = prop_node.to_natural_language()
+                        name = f"p_{self.property_counter}"
 
-                    prop = SVAProperty(
-                        name=name,
-                        sva_code=sva_code,
-                        svad=svad,
-                        property_block=property_block
-                    )
+                        property_block = (
+                            f"property {name};\n"
+                            f"  @(posedge {self.synth.clock_signal}) {sva_code};\n"
+                            f"endproperty"
+                        )
 
-                    properties.append(prop)
-                    self.property_counter += 1
+                        prop = SVAProperty(
+                            name=name,
+                            sva_code=sva_code,
+                            svad=svad,
+                            property_block=property_block
+                        )
 
-                except Exception as e:
-                    print(f"\n  Warning: Failed to generate for '{keyword}': {e}")
-                    continue
+                        # Validate the property individually
+                        validation = self.synth.validate_single_property(prop)
 
-            print("Done")
+                        if validation.is_valid:
+                            properties.append(prop)
+                            self.property_counter += 1
+                            valid_samples += 1
+                            validated = True
+                            break
+
+                    except Exception as e:
+                        # Continue to retry on exceptions
+                        continue
+
+                if not validated:
+                    invalid_count += 1
+
+            print(f"Done ({valid_samples} valid)")
 
         # Shuffle to mix constructs
         random.shuffle(properties)
 
-        print(f"\n✓ Generated {len(properties)} properties with guaranteed coverage")
+        print(f"\n✓ Generated {len(properties)} valid properties (dropped {invalid_count} invalid)")
         return properties

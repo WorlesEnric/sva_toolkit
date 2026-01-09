@@ -1,0 +1,131 @@
+{
+  "properties": [
+    {
+      "name": "p_gen_0",
+      "sva": "data_en |-> (data_en[=4:5])",
+      "svad": "When the data enable (data_en) signal, the data enable (data_en) signal occurs between 4 and 5 times non-consecutively must occur in the same cycle.",
+      "property_block": "property p_gen_0;\n  @(posedge clk) data_en |-> (data_en[=4:5]);\nendproperty"
+    },
+    {
+      "name": "p_gen_1",
+      "sva": "((ack ##[2:3] (gnt[*4]))[->2]) |-> first_match(ack)",
+      "svad": "When the acknowledge (ack) signal, then between 2 and 3 cycles later, the grant (gnt) signal occurs 4 times consecutively occurs 2 times with goto, the first match of the acknowledge (ack) signal must occur in the same cycle.",
+      "property_block": "property p_gen_1;\n  @(posedge clk) ((ack ##[2:3] (gnt[*4]))[->2]) |-> first_match(ack);\nendproperty"
+    },
+    {
+      "name": "p_gen_2",
+      "sva": "disable iff (req) (busy |-> (((ready ##1 req) ##[0:2] data_en) or ((data_en ##[0:1] valid) ##[2:3] (valid[*2:$]))))",
+      "svad": "When the busy signal, the ready signal, then in the next cycle, the request (req) signal, then between 0 and 2 cycles later, the data enable (data_en) signal or the data enable (data_en) signal, then between 0 and 1 cycles later, the valid signal, then between 2 and 3 cycles later, the valid signal occurs at least 2 times consecutively must occur in the same cycle (disabled when the request (req) signal).",
+      "property_block": "property p_gen_2;\n  @(posedge clk) disable iff (req) (busy |-> (((ready ##1 req) ##[0:2] data_en) or ((data_en ##[0:1] valid) ##[2:3] (valid[*2:$]))));\nendproperty"
+    },
+    {
+      "name": "p_gen_3",
+      "sva": "(((ack or req) ##[0:3] data_en)[=4:6]) |-> busy",
+      "svad": "When the acknowledge (ack) signal or the request (req) signal, then between 0 and 3 cycles later, the data enable (data_en) signal occurs between 4 and 6 times non-consecutively, the busy signal must occur in the same cycle.",
+      "property_block": "property p_gen_3;\n  @(posedge clk) (((ack or req) ##[0:3] data_en)[=4:6]) |-> busy;\nendproperty"
+    },
+    {
+      "name": "p_gen_4",
+      "sva": "(data_en ##2 valid) |-> busy",
+      "svad": "When the data enable (data_en) signal, then 2 cycles later, the valid signal, the busy signal must occur in the same cycle.",
+      "property_block": "property p_gen_4;\n  @(posedge clk) (data_en ##2 valid) |-> busy;\nendproperty"
+    },
+    {
+      "name": "p_gen_5",
+      "sva": "data_en",
+      "svad": "The data enable (data_en) signal.",
+      "property_block": "property p_gen_5;\n  @(posedge clk) data_en;\nendproperty"
+    },
+    {
+      "name": "p_gen_6",
+      "sva": "valid |-> ack",
+      "svad": "When the valid signal, the acknowledge (ack) signal must occur in the same cycle.",
+      "property_block": "property p_gen_6;\n  @(posedge clk) valid |-> ack;\nendproperty"
+    },
+    {
+      "name": "p_gen_7",
+      "sva": "data_en |=> ready",
+      "svad": "When the data enable (data_en) signal, the ready signal must occur in the next cycle.",
+      "property_block": "property p_gen_7;\n  @(posedge clk) data_en |=> ready;\nendproperty"
+    },
+    {
+      "name": "p_gen_8",
+      "sva": "(data_en ##[1:3] data_en) |=> ((gnt intersect (ready ##[0:2] busy)) or data_en)",
+      "svad": "When the data enable (data_en) signal, then between 1 and 3 cycles later, the data enable (data_en) signal, the grant (gnt) signal intersects with the ready signal, then between 0 and 2 cycles later, the busy signal or the data enable (data_en) signal must occur in the next cycle.",
+      "property_block": "property p_gen_8;\n  @(posedge clk) (data_en ##[1:3] data_en) |=> ((gnt intersect (ready ##[0:2] busy)) or data_en);\nendproperty"
+    },
+    {
+      "name": "p_gen_9",
+      "sva": "((ack ##[2:3] busy)[->2:4]) |=> (((valid ##[2:5] req) or data_en)[=5])",
+      "svad": "When the acknowledge (ack) signal, then between 2 and 3 cycles later, the busy signal occurs between 2 and 4 times with goto, the valid signal, then between 2 and 5 cycles later, the request (req) signal or the data enable (data_en) signal occurs 5 times non-consecutively must occur in the next cycle.",
+      "property_block": "property p_gen_9;\n  @(posedge clk) ((ack ##[2:3] busy)[->2:4]) |=> (((valid ##[2:5] req) or data_en)[=5]);\nendproperty"
+    },
+    {
+      "name": "p_gen_10",
+      "sva": "gnt",
+      "svad": "The grant (gnt) signal.",
+      "property_block": "property p_gen_10;\n  @(posedge clk) gnt;\nendproperty"
+    },
+    {
+      "name": "p_gen_11",
+      "sva": "ready",
+      "svad": "The ready signal.",
+      "property_block": "property p_gen_11;\n  @(posedge clk) ready;\nendproperty"
+    },
+    {
+      "name": "p_gen_12",
+      "sva": "(gnt until_with ((valid ##[0:3] (valid ##[1:4] busy))[*3]))",
+      "svad": "The grant (gnt) signal until and including the valid signal, then between 0 and 3 cycles later, the valid signal, then between 1 and 4 cycles later, the busy signal occurs 3 times consecutively.",
+      "property_block": "property p_gen_12;\n  @(posedge clk) (gnt until_with ((valid ##[0:3] (valid ##[1:4] busy))[*3]));\nendproperty"
+    },
+    {
+      "name": "p_gen_13",
+      "sva": "if ((!((!$fell(ack)) || ($past(ack, 3) != data_en)))) data_en",
+      "svad": "The property holds.",
+      "property_block": "property p_gen_13;\n  @(posedge clk) if ((!((!$fell(ack)) || ($past(ack, 3) != data_en)))) data_en;\nendproperty"
+    },
+    {
+      "name": "p_gen_14",
+      "sva": "data_en |-> (ready intersect ready)",
+      "svad": "When the data enable (data_en) signal, the ready signal intersects with the ready signal must occur in the same cycle.",
+      "property_block": "property p_gen_14;\n  @(posedge clk) data_en |-> (ready intersect ready);\nendproperty"
+    },
+    {
+      "name": "p_gen_15",
+      "sva": "(gnt and (ready[->0:$]))",
+      "svad": "(the grant (gnt) signal and the ready signal occurs at least 0 times with goto).",
+      "property_block": "property p_gen_15;\n  @(posedge clk) (gnt and (ready[->0:$]));\nendproperty"
+    },
+    {
+      "name": "p_gen_16",
+      "sva": "if ((((~gnt) | (data_en * data_en)) < ((valid % $past(req, 2)) ^ (busy % ready)))) valid else ((data_en[=3:4]) ##[2:5] ((data_en ##[0:1] data_en)[->2:3]))",
+      "svad": "If bitwise NOT of the grant (gnt) signal bitwise OR the data enable (data_en) signal times the data enable (data_en) signal is less than the valid signal modulo the value of the request (req) signal from 2 cycles ago bitwise XOR the busy signal modulo the ready signal, then the valid signal; otherwise the data enable (data_en) signal occurs between 3 and 4 times non-consecutively, then between 2 and 5 cycles later, the data enable (data_en) signal, then between 0 and 1 cycles later, the data enable (data_en) signal occurs between 2 and 3 times with goto.",
+      "property_block": "property p_gen_16;\n  @(posedge clk) if ((((~gnt) | (data_en * data_en)) < ((valid % $past(req, 2)) ^ (busy % ready)))) valid else ((data_en[=3:4]) ##[2:5] ((data_en ##[0:1] data_en)[->2:3]));\nendproperty"
+    },
+    {
+      "name": "p_gen_17",
+      "sva": "ready |-> ((data_en ##[1:3] valid) or (gnt[*4:5]))",
+      "svad": "When the ready signal, the data enable (data_en) signal, then between 1 and 3 cycles later, the valid signal or the grant (gnt) signal occurs between 4 and 5 times consecutively must occur in the same cycle.",
+      "property_block": "property p_gen_17;\n  @(posedge clk) ready |-> ((data_en ##[1:3] valid) or (gnt[*4:5]));\nendproperty"
+    },
+    {
+      "name": "p_gen_18",
+      "sva": "((ready intersect (req[->3:4])) ##[2:3] busy) |-> req",
+      "svad": "When the ready signal intersects with the request (req) signal occurs between 3 and 4 times with goto, then between 2 and 3 cycles later, the busy signal, the request (req) signal must occur in the same cycle.",
+      "property_block": "property p_gen_18;\n  @(posedge clk) ((ready intersect (req[->3:4])) ##[2:3] busy) |-> req;\nendproperty"
+    },
+    {
+      "name": "p_gen_19",
+      "sva": "(ready ##0 ready) |=> (req ##[1:4] (valid throughout gnt))",
+      "svad": "When the ready signal, then immediately, the ready signal, the request (req) signal, then between 1 and 4 cycles later, the valid signal holds continuously while the grant (gnt) signal must occur in the next cycle.",
+      "property_block": "property p_gen_19;\n  @(posedge clk) (ready ##0 ready) |=> (req ##[1:4] (valid throughout gnt));\nendproperty"
+    }
+  ],
+  "module_code": "module sva_test_bench (\n  input logic clk,\n  input logic rst_n\n);\n\n  // Signal Declarations\n  logic req;\n  logic ack;\n  logic gnt;\n  logic valid;\n  logic ready;\n  logic data_en;\n  logic busy;\n\n  // Generated Properties\n  property p_gen_0;\n  @(posedge clk) data_en |-> (data_en[=4:5]);\nendproperty\n\n  property p_gen_1;\n  @(posedge clk) ((ack ##[2:3] (gnt[*4]))[->2]) |-> first_match(ack);\nendproperty\n\n  property p_gen_2;\n  @(posedge clk) disable iff (req) (busy |-> (((ready ##1 req) ##[0:2] data_en) or ((data_en ##[0:1] valid) ##[2:3] (valid[*2:$]))));\nendproperty\n\n  property p_gen_3;\n  @(posedge clk) (((ack or req) ##[0:3] data_en)[=4:6]) |-> busy;\nendproperty\n\n  property p_gen_4;\n  @(posedge clk) (data_en ##2 valid) |-> busy;\nendproperty\n\n  property p_gen_5;\n  @(posedge clk) data_en;\nendproperty\n\n  property p_gen_6;\n  @(posedge clk) valid |-> ack;\nendproperty\n\n  property p_gen_7;\n  @(posedge clk) data_en |=> ready;\nendproperty\n\n  property p_gen_8;\n  @(posedge clk) (data_en ##[1:3] data_en) |=> ((gnt intersect (ready ##[0:2] busy)) or data_en);\nendproperty\n\n  property p_gen_9;\n  @(posedge clk) ((ack ##[2:3] busy)[->2:4]) |=> (((valid ##[2:5] req) or data_en)[=5]);\nendproperty\n\n  property p_gen_10;\n  @(posedge clk) gnt;\nendproperty\n\n  property p_gen_11;\n  @(posedge clk) ready;\nendproperty\n\n  property p_gen_12;\n  @(posedge clk) (gnt until_with ((valid ##[0:3] (valid ##[1:4] busy))[*3]));\nendproperty\n\n  property p_gen_13;\n  @(posedge clk) if ((!((!$fell(ack)) || ($past(ack, 3) != data_en)))) data_en;\nendproperty\n\n  property p_gen_14;\n  @(posedge clk) data_en |-> (ready intersect ready);\nendproperty\n\n  property p_gen_15;\n  @(posedge clk) (gnt and (ready[->0:$]));\nendproperty\n\n  property p_gen_16;\n  @(posedge clk) if ((((~gnt) | (data_en * data_en)) < ((valid % $past(req, 2)) ^ (busy % ready)))) valid else ((data_en[=3:4]) ##[2:5] ((data_en ##[0:1] data_en)[->2:3]));\nendproperty\n\n  property p_gen_17;\n  @(posedge clk) ready |-> ((data_en ##[1:3] valid) or (gnt[*4:5]));\nendproperty\n\n  property p_gen_18;\n  @(posedge clk) ((ready intersect (req[->3:4])) ##[2:3] busy) |-> req;\nendproperty\n\n  property p_gen_19;\n  @(posedge clk) (ready ##0 ready) |=> (req ##[1:4] (valid throughout gnt));\nendproperty\n\n  // Assertion Instances\n  assert_p_gen_0: assert property (p_gen_0);\n  assert_p_gen_1: assert property (p_gen_1);\n  assert_p_gen_2: assert property (p_gen_2);\n  assert_p_gen_3: assert property (p_gen_3);\n  assert_p_gen_4: assert property (p_gen_4);\n  assert_p_gen_5: assert property (p_gen_5);\n  assert_p_gen_6: assert property (p_gen_6);\n  assert_p_gen_7: assert property (p_gen_7);\n  assert_p_gen_8: assert property (p_gen_8);\n  assert_p_gen_9: assert property (p_gen_9);\n  assert_p_gen_10: assert property (p_gen_10);\n  assert_p_gen_11: assert property (p_gen_11);\n  assert_p_gen_12: assert property (p_gen_12);\n  assert_p_gen_13: assert property (p_gen_13);\n  assert_p_gen_14: assert property (p_gen_14);\n  assert_p_gen_15: assert property (p_gen_15);\n  assert_p_gen_16: assert property (p_gen_16);\n  assert_p_gen_17: assert property (p_gen_17);\n  assert_p_gen_18: assert property (p_gen_18);\n  assert_p_gen_19: assert property (p_gen_19);\n\nendmodule\n",
+  "validation": {
+    "is_valid": true,
+    "error_message": ""
+  },
+  "valid_count": 20,
+  "invalid_count": 0
+}

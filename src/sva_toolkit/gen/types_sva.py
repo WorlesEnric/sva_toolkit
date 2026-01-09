@@ -141,14 +141,6 @@ class Signal(SVANode):
         """
         return self.name
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        return f"signal '{self.name}'"
-
-
 class UnaryOp(SVANode):
     """
     @brief Represents a unary operation in SVA.
@@ -188,21 +180,6 @@ class UnaryOp(SVANode):
         @return Unary operation
         """
         return f"({self.op}{self.operand})"
-
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        templates = {
-            "!": "NOT {operand}",
-            "~": "bitwise NOT of {operand}",
-            "-": "negative of {operand}",
-            "+": "positive of {operand}",
-        }
-        template = templates.get(self.op, f"{self.op} {{operand}}")
-        return template.format(operand=self.operand.to_natural_language())
-
 
 class BinaryOp(SVANode):
     """
@@ -245,40 +222,6 @@ class BinaryOp(SVANode):
         """
         return f"({self.left} {self.op} {self.right})"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        templates = {
-            "==": "{left} equals {right}",
-            "!=": "{left} does not equal {right}",
-            "===": "{left} equals {right} (including X/Z)",
-            "!==": "{left} does not equal {right} (including X/Z)",
-            "&&": "{left} AND {right}",
-            "||": "{left} OR {right}",
-            "&": "{left} bitwise-AND {right}",
-            "|": "{left} bitwise-OR {right}",
-            "^": "{left} bitwise-XOR {right}",
-            "^~": "{left} bitwise-XNOR {right}",
-            "~^": "{left} bitwise-XNOR {right}",
-            ">": "{left} is greater than {right}",
-            "<": "{left} is less than {right}",
-            ">=": "{left} is greater than or equal to {right}",
-            "<=": "{left} is less than or equal to {right}",
-            "+": "{left} plus {right}",
-            "-": "{left} minus {right}",
-            "*": "{left} multiplied by {right}",
-            "/": "{left} divided by {right}",
-            "%": "{left} modulo {right}",
-        }
-        template = templates.get(self.op, f"{{left}} {self.op} {{right}}")
-        return template.format(
-            left=self.left.to_natural_language(),
-            right=self.right.to_natural_language()
-        )
-
-
 class TernaryOp(SVANode):
     """
     @brief Represents a ternary conditional operation (? :).
@@ -312,16 +255,6 @@ class TernaryOp(SVANode):
         """
         return f"({self.condition} ? {self.true_expr} : {self.false_expr})"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        return (f"if {self.condition.to_natural_language()} then "
-                f"{self.true_expr.to_natural_language()} else "
-                f"{self.false_expr.to_natural_language()}")
-
-
 class UnarySysFunction(SVANode):
     """
     @brief Represents a unary system function call in SVA.
@@ -349,25 +282,6 @@ class UnarySysFunction(SVANode):
         @return System function call
         """
         return f"{self.func}({self.arg})"
-
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        templates = {
-            "$rose": "{arg} rises from 0 to 1",
-            "$fell": "{arg} falls from 1 to 0",
-            "$stable": "{arg} remains stable",
-            "$changed": "{arg} changes value",
-            "$onehot": "exactly one bit is high in {arg}",
-            "$onehot0": "at most one bit is high in {arg}",
-            "$isunknown": "{arg} is unknown (X or Z)",
-            "$countones": "count of ones in {arg}",
-        }
-        template = templates.get(self.func, f"{self.func}({{arg}})")
-        return template.format(arg=self.arg.to_natural_language())
-
 
 class PastFunction(SVANode):
     """
@@ -399,19 +313,6 @@ class PastFunction(SVANode):
             return f"$past({self.signal})"
         return f"$past({self.signal}, {self.depth})"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        if self.depth is None or self.depth == 1:
-            return f"the previous value of {self.signal.to_natural_language()}"
-        return f"the value of {self.signal.to_natural_language()} {self.depth} cycles ago"
-
-
-# --- SEQUENCE LAYER ---
-
-
 class SequenceDelay(SVANode):
     """
     @brief Represents a sequence delay operation in SVA.
@@ -442,16 +343,6 @@ class SequenceDelay(SVANode):
         @return Sequence with delay
         """
         return f"({self.left} {self.delay} {self.right})"
-
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        delay_desc = self._parse_delay_description(self.delay)
-        left_desc = self.left.to_natural_language()
-        right_desc = self.right.to_natural_language()
-        return f"({left_desc}), then {delay_desc}, ({right_desc})"
 
     def _parse_delay_description(self, delay: str) -> str:
         """Parse delay string into natural language."""
@@ -510,20 +401,6 @@ class SequenceRepeat(SVANode):
         """
         return f"({self.expr}{self.op}{self.count})"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        count_desc = self._parse_count_description(self.count)
-        op_desc = {
-            "[*": "consecutively",
-            "[=": "non-consecutively",
-            "[->": "with goto"
-        }.get(self.op, "")
-
-        return f"{self.expr.to_natural_language()} occurs {count_desc} {op_desc}"
-
     def _parse_count_description(self, count: str) -> str:
         """Parse count string into natural language."""
         count = count.rstrip("]")
@@ -573,25 +450,6 @@ class SequenceBinary(SVANode):
         """
         return f"({self.left} {self.op} {self.right})"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        templates = {
-            "intersect": "{left} intersects with {right}",
-            "throughout": "{left} holds throughout {right}",
-            "and": "{left} and {right}",
-            "or": "{left} or {right}",
-            "within": "{left} occurs within {right}",
-        }
-        template = templates.get(self.op, f"{{left}} {self.op} {{right}}")
-        return template.format(
-            left=self.left.to_natural_language(),
-            right=self.right.to_natural_language()
-        )
-
-
 class SequenceFirstMatch(SVANode):
     """
     @brief Represents first_match operator for sequences.
@@ -614,14 +472,6 @@ class SequenceFirstMatch(SVANode):
         """
         return f"first_match({self.sequence})"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        return f"the first match of {self.sequence.to_natural_language()}"
-
-
 class SequenceEnded(SVANode):
     """
     @brief Represents sequence.ended construct.
@@ -643,17 +493,6 @@ class SequenceEnded(SVANode):
         @return sequence.ended expression
         """
         return f"({self.sequence}).ended"
-
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        return f"{self.sequence.to_natural_language()} has ended"
-
-
-# --- PROPERTY LAYER ---
-
 
 class Implication(SVANode):
     """
@@ -686,20 +525,6 @@ class Implication(SVANode):
         """
         return f"{self.ante} {self.op} {self.cons}"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        ante_desc = self.ante.to_natural_language()
-        cons_desc = self.cons.to_natural_language()
-
-        if self.op == "|->":
-            return f"When {ante_desc}, then in the same cycle: {cons_desc}."
-        else:  # |=>
-            return f"When {ante_desc}, then in the next cycle: {cons_desc}."
-
-
 class DisableIff(SVANode):
     """
     @brief Represents a disable iff clause in SVA.
@@ -728,19 +553,6 @@ class DisableIff(SVANode):
         """
         return f"disable iff ({self.reset}) ({self.prop})"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        prop_desc = self.prop.to_natural_language()
-        reset_desc = self.reset.to_natural_language()
-        # Remove trailing period if present
-        if prop_desc.endswith('.'):
-            prop_desc = prop_desc[:-1]
-        return f"{prop_desc} (disabled when {reset_desc})."
-
-
 class NotProperty(SVANode):
     """
     @brief Represents a negated property in SVA.
@@ -762,14 +574,6 @@ class NotProperty(SVANode):
         @return Negated property
         """
         return f"not ({self.prop})"
-
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        return f"NOT ({self.prop.to_natural_language()})"
-
 
 class PropertyIfElse(SVANode):
     """
@@ -804,19 +608,6 @@ class PropertyIfElse(SVANode):
             return f"if ({self.condition}) {self.true_prop}"
         return f"if ({self.condition}) {self.true_prop} else {self.false_prop}"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        if self.false_prop is None:
-            return (f"if {self.condition.to_natural_language()}, "
-                   f"then {self.true_prop.to_natural_language()}")
-        return (f"if {self.condition.to_natural_language()}, "
-               f"then {self.true_prop.to_natural_language()}, "
-               f"otherwise {self.false_prop.to_natural_language()}")
-
-
 class PropertyUntil(SVANode):
     """
     @brief Represents temporal until operators.
@@ -849,17 +640,6 @@ class PropertyUntil(SVANode):
         """
         return f"({self.left} {self.op} {self.right})"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        if self.op == "until":
-            return f"{self.left.to_natural_language()} until {self.right.to_natural_language()}"
-        else:  # until_with
-            return f"{self.left.to_natural_language()} until (and including when) {self.right.to_natural_language()}"
-
-
 class PropertyBinary(SVANode):
     """
     @brief Represents binary property operations (and, or).
@@ -891,21 +671,3 @@ class PropertyBinary(SVANode):
         """
         return f"({self.left} {self.op} {self.right})"
 
-    def to_natural_language(self) -> str:
-        """
-        @brief Convert to natural language.
-        @return Natural language description
-        """
-        left_desc = self.left.to_natural_language()
-        right_desc = self.right.to_natural_language()
-
-        # Remove trailing periods for cleaner conjunction
-        if left_desc.endswith('.'):
-            left_desc = left_desc[:-1]
-        if right_desc.endswith('.'):
-            right_desc = right_desc[:-1]
-
-        if self.op == "and":
-            return f"({left_desc}) AND ({right_desc})."
-        else:  # or
-            return f"({left_desc}) OR ({right_desc})."
