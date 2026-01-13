@@ -1,0 +1,151 @@
+{
+  "properties": [
+    {
+      "name": "p_gen_0",
+      "sva": "(((busy[->1:4])[->4:5])[=2:5]) |-> (data_en ##2 req)",
+      "svad": "Logic: When Seq_1 occurs between 2 and 5 times (non-consecutively) before sequence continues occurs, then in the same cycle, the data enable (data_en) signal followed by the request (req) signal 2 cycles later must hold.\nDefinitions:\n* Seq_0: the between 1 and 4 times occurrence of the busy signal (goto)\n* Seq_1: the between 4 and 5 times occurrence of Seq_0 (goto)\n",
+      "property_block": "property p_gen_0;\n  @(posedge clk) (((busy[->1:4])[->4:5])[=2:5]) |-> (data_en ##2 req);\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `busy`, `data_en`, `req`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the same cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_1: wait for the 1st occurrence of the busy signal\n- Seq_0: wait for the 4th occurrence of Seq_1\n- Exp_0: Seq_0 occurs between 2 and 5 times non-consecutively before the sequence continues\n- Exp_1: the data enable (data_en) signal followed by the request (req) signal 2 cycles later"
+    },
+    {
+      "name": "p_gen_1",
+      "sva": "(busy[->4:5]) |=> ack",
+      "svad": "Logic: When the between 4 and 5 times occurrence of the busy signal (goto) occurs, then in the next cycle, the acknowledge (ack) signal must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_1;\n  @(posedge clk) (busy[->4:5]) |=> ack;\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `ack`, `busy`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Exp_0: wait for the 4th occurrence of the busy signal\n- Exp_1: the acknowledge (ack) signal"
+    },
+    {
+      "name": "p_gen_2",
+      "sva": "req |=> (((ready ##[0:2] data_en)[=3]) throughout (ack[=4:7]))",
+      "svad": "Logic: When the request (req) signal occurs, then in the next cycle, Seq_1 holds true throughout the execution of Seq_2 must hold.\nDefinitions:\n* Seq_0: the ready signal followed by the data enable (data_en) signal between 0 and 2 cycles later\n* Seq_1: Seq_0 occurs 3 times (non-consecutively) before sequence continues\n* Seq_2: the acknowledge (ack) signal occurs between 4 and 7 times (non-consecutively) before sequence continues\n",
+      "property_block": "property p_gen_2;\n  @(posedge clk) req |=> (((ready ##[0:2] data_en)[=3]) throughout (ack[=4:7]));\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `ack`, `data_en`, `ready`, `req`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_1: the ready signal followed by the data enable (data_en) signal between 0 and 2 cycles later\n- Seq_0: Seq_1 occurs 3 times non-consecutively before the sequence continues\n- Seq_2: the acknowledge (ack) signal occurs between 4 and 7 times non-consecutively before the sequence continues\n- Exp_0: the request (req) signal\n- Exp_1: Seq_0 holds true throughout the execution of Seq_2"
+    },
+    {
+      "name": "p_gen_3",
+      "sva": "ready |-> ((gnt ##[0:$] (gnt throughout req)) ##[0:2] (gnt and (valid[->3:4])))",
+      "svad": "Logic: When the ready signal occurs, then in the same cycle, Seq_1 followed by Seq_3 between 0 and 2 cycles later must hold.\nDefinitions:\n* Seq_0: the grant (gnt) signal holds true throughout the execution of the request (req) signal\n* Seq_1: the grant (gnt) signal followed by Seq_0 eventually\n* Seq_2: the between 3 and 4 times occurrence of the valid signal (goto)\n* Seq_3: the grant (gnt) signal and Seq_2 both occur\n",
+      "property_block": "property p_gen_3;\n  @(posedge clk) ready |-> ((gnt ##[0:$] (gnt throughout req)) ##[0:2] (gnt and (valid[->3:4])));\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `gnt`, `ready`, `req`, `valid`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the same cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_1: the grant (gnt) signal holds true throughout the execution of the request (req) signal\n- Seq_0: the grant (gnt) signal followed by Seq_1 eventually\n- Seq_3: wait for the 3rd occurrence of the valid signal\n- Seq_2: the grant (gnt) signal and Seq_3 both occur\n- Exp_0: the ready signal\n- Exp_1: Seq_0 followed by Seq_2 between 0 and 2 cycles later"
+    },
+    {
+      "name": "p_gen_4",
+      "sva": "(((ack intersect ack) ##[0:3] valid)[->5:8]) |=> ready",
+      "svad": "Logic: When the between 5 and 8 times occurrence of Seq_1 (goto) occurs, then in the next cycle, the ready signal must hold.\nDefinitions:\n* Seq_0: Sequence the acknowledge (ack) signal and Sequence the acknowledge (ack) signal start and end at the exact same time\n* Seq_1: Seq_0 followed by the valid signal between 0 and 3 cycles later\n",
+      "property_block": "property p_gen_4;\n  @(posedge clk) (((ack intersect ack) ##[0:3] valid)[->5:8]) |=> ready;\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `ack`, `ready`, `valid`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_1: Sequence the acknowledge (ack) signal and Sequence the acknowledge (ack) signal start and end at the exact same time\n- Seq_0: Seq_1 followed by the valid signal between 0 and 3 cycles later\n- Exp_0: wait for the 5th occurrence of Seq_0\n- Exp_1: the ready signal"
+    },
+    {
+      "name": "p_gen_5",
+      "sva": "(busy ##[0:2] gnt) |=> first_match(valid)",
+      "svad": "Logic: When the busy signal followed by the grant (gnt) signal between 0 and 2 cycles later occurs, then in the next cycle, first_match(valid) must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_5;\n  @(posedge clk) (busy ##[0:2] gnt) |=> first_match(valid);\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `busy`, `gnt`, `valid`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Exp_0: the busy signal followed by the grant (gnt) signal between 0 and 2 cycles later\n- Exp_1: the first match of the valid signal"
+    },
+    {
+      "name": "p_gen_6",
+      "sva": "data_en |-> busy",
+      "svad": "Logic: When the data enable (data_en) signal occurs, then in the same cycle, the busy signal must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_6;\n  @(posedge clk) data_en |-> busy;\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `busy`, `data_en`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the same cycle, Exp_1 must hold.\n\nDefinitions:\n- Exp_0: the data enable (data_en) signal\n- Exp_1: the busy signal"
+    },
+    {
+      "name": "p_gen_7",
+      "sva": "first_match((data_en[=3:6])) |-> (valid[->2])",
+      "svad": "Logic: When first_match((data_en[=3:6])) occurs, then in the same cycle, the 2 times occurrence of the valid signal (goto) must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_7;\n  @(posedge clk) first_match((data_en[=3:6])) |-> (valid[->2]);\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `data_en`, `valid`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the same cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_0: the data enable (data_en) signal occurs between 3 and 6 times non-consecutively before the sequence continues\n- Exp_0: the first match of Seq_0\n- Exp_1: wait for the 2nd occurrence of the valid signal"
+    },
+    {
+      "name": "p_gen_8",
+      "sva": "(gnt until (((data_en ##[1:4] busy) and (req[->4:5])) ##[0:2] ((ready ##[0:1] gnt) or gnt)))",
+      "svad": "Logic: (gnt until (((data_en ##[1:4] busy) and (req[->4:5])) ##[0:2] ((ready ##[0:1] gnt) or gnt)))\nDefinitions:\n",
+      "property_block": "property p_gen_8;\n  @(posedge clk) (gnt until (((data_en ##[1:4] busy) and (req[->4:5])) ##[0:2] ((ready ##[0:1] gnt) or gnt)));\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `busy`, `data_en`, `gnt`, `ready`, `req`\n\n2. Check Condition:\nEvaluate the property: (gnt until (((data_en ##[1:4] busy) and (req[->4:5])) ##[0:2] ((ready ##[0:1] gnt) or gnt)))\n\n3. Expected Results:\nNo explicit implication; the property is the condition itself."
+    },
+    {
+      "name": "p_gen_9",
+      "sva": "gnt |-> valid",
+      "svad": "Logic: When the grant (gnt) signal occurs, then in the same cycle, the valid signal must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_9;\n  @(posedge clk) gnt |-> valid;\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `gnt`, `valid`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the same cycle, Exp_1 must hold.\n\nDefinitions:\n- Exp_0: the grant (gnt) signal\n- Exp_1: the valid signal"
+    },
+    {
+      "name": "p_gen_10",
+      "sva": "(busy throughout gnt) |=> (gnt[*5:7])",
+      "svad": "Logic: When the busy signal holds true throughout the execution of the grant (gnt) signal occurs, then in the next cycle, the grant (gnt) signal remains true for between 5 and 7 times consecutive cycles must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_10;\n  @(posedge clk) (busy throughout gnt) |=> (gnt[*5:7]);\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `busy`, `gnt`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Exp_0: the busy signal holds true throughout the execution of the grant (gnt) signal\n- Exp_1: the grant (gnt) signal remains true between 5 and 7 times consecutively"
+    },
+    {
+      "name": "p_gen_11",
+      "sva": "busy |=> ((ready[=5:7]) or ((ack[*1:4]) ##[0:1] (req and req)))",
+      "svad": "Logic: When the busy signal occurs, then in the next cycle, Seq_0 or Seq_3 occurs must hold.\nDefinitions:\n* Seq_0: the ready signal occurs between 5 and 7 times (non-consecutively) before sequence continues\n* Seq_1: the acknowledge (ack) signal remains true for between 1 and 4 times consecutive cycles\n* Seq_2: the request (req) signal and the request (req) signal both occur\n* Seq_3: Seq_1 followed by Seq_2 between 0 and 1 cycles later\n",
+      "property_block": "property p_gen_11;\n  @(posedge clk) busy |=> ((ready[=5:7]) or ((ack[*1:4]) ##[0:1] (req and req)));\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `ack`, `busy`, `ready`, `req`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_0: the ready signal occurs between 5 and 7 times non-consecutively before the sequence continues\n- Seq_2: the acknowledge (ack) signal remains true between 1 and 4 times consecutively\n- Seq_3: the request (req) signal and the request (req) signal both occur\n- Seq_1: Seq_2 followed by Seq_3 between 0 and 1 cycles later\n- Exp_0: the busy signal\n- Exp_1: Seq_0 or Seq_1 occurs"
+    },
+    {
+      "name": "p_gen_12",
+      "sva": "(ack and ready)",
+      "svad": "Logic: (ack and ready)\nDefinitions:\n",
+      "property_block": "property p_gen_12;\n  @(posedge clk) (ack and ready);\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `ack`, `ready`\n\n2. Check Condition:\nEvaluate the property: (ack and ready)\n\n3. Expected Results:\nNo explicit implication; the property is the condition itself."
+    },
+    {
+      "name": "p_gen_13",
+      "sva": "valid |=> ((valid ##[1:$] (busy ##[0:2] valid))[=4:6])",
+      "svad": "Logic: When the valid signal occurs, then in the next cycle, Seq_1 occurs between 4 and 6 times (non-consecutively) before sequence continues must hold.\nDefinitions:\n* Seq_0: the busy signal followed by the valid signal between 0 and 2 cycles later\n* Seq_1: the valid signal followed by Seq_0 at least 1 cycles later\n",
+      "property_block": "property p_gen_13;\n  @(posedge clk) valid |=> ((valid ##[1:$] (busy ##[0:2] valid))[=4:6]);\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `busy`, `valid`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_1: the busy signal followed by the valid signal between 0 and 2 cycles later\n- Seq_0: the valid signal followed by Seq_1 at least 1 cycles later\n- Exp_0: the valid signal\n- Exp_1: Seq_0 occurs between 4 and 6 times non-consecutively before the sequence continues"
+    },
+    {
+      "name": "p_gen_14",
+      "sva": "((gnt[*3:4]) ##[1:3] data_en) |-> data_en",
+      "svad": "Logic: When Seq_0 followed by the data enable (data_en) signal between 1 and 3 cycles later occurs, then in the same cycle, the data enable (data_en) signal must hold.\nDefinitions:\n* Seq_0: the grant (gnt) signal remains true for between 3 and 4 times consecutive cycles\n",
+      "property_block": "property p_gen_14;\n  @(posedge clk) ((gnt[*3:4]) ##[1:3] data_en) |-> data_en;\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `data_en`, `gnt`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the same cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_0: the grant (gnt) signal remains true between 3 and 4 times consecutively\n- Exp_0: Seq_0 followed by the data enable (data_en) signal between 1 and 3 cycles later\n- Exp_1: the data enable (data_en) signal"
+    },
+    {
+      "name": "p_gen_15",
+      "sva": "ack |-> ack",
+      "svad": "Logic: When the acknowledge (ack) signal occurs, then in the same cycle, the acknowledge (ack) signal must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_15;\n  @(posedge clk) ack |-> ack;\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `ack`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the same cycle, Exp_1 must hold.\n\nDefinitions:\n- Exp_0: the acknowledge (ack) signal\n- Exp_1: the acknowledge (ack) signal"
+    },
+    {
+      "name": "p_gen_16",
+      "sva": "disable iff (valid) ((req ##[0:1] (ack ##[2:4] busy)) |=> gnt)",
+      "svad": "Scope: This property is active unless the valid signal is asserted.\nLogic: When the request (req) signal followed by Seq_0 between 0 and 1 cycles later occurs, then in the next cycle, the grant (gnt) signal must hold.\nDefinitions:\n* Seq_0: the acknowledge (ack) signal followed by the busy signal between 2 and 4 cycles later\n",
+      "property_block": "property p_gen_16;\n  @(posedge clk) disable iff (valid) ((req ##[0:1] (ack ##[2:4] busy)) |=> gnt);\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset signal: `valid` (active high)\n- Scope: This property is active unless valid is asserted.\n- Other relevant signals: `ack`, `busy`, `gnt`, `req`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Exp_0: ((the request (req) signal ##[0:1] (the acknowledge (ack) signal ##[2:4] the busy signal))\n- Exp_1: the grant (gnt) signal)"
+    },
+    {
+      "name": "p_gen_17",
+      "sva": "data_en |=> ready",
+      "svad": "Logic: When the data enable (data_en) signal occurs, then in the next cycle, the ready signal must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_17;\n  @(posedge clk) data_en |=> ready;\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `data_en`, `ready`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Exp_0: the data enable (data_en) signal\n- Exp_1: the ready signal"
+    },
+    {
+      "name": "p_gen_18",
+      "sva": "gnt |=> ((data_en intersect req)[*2])",
+      "svad": "Logic: When the grant (gnt) signal occurs, then in the next cycle, Seq_0 remains true for 2 times consecutive cycles must hold.\nDefinitions:\n* Seq_0: Sequence the data enable (data_en) signal and Sequence the request (req) signal start and end at the exact same time\n",
+      "property_block": "property p_gen_18;\n  @(posedge clk) gnt |=> ((data_en intersect req)[*2]);\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `data_en`, `gnt`, `req`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_0: Sequence the data enable (data_en) signal and Sequence the request (req) signal start and end at the exact same time\n- Exp_0: the grant (gnt) signal\n- Exp_1: Seq_0 remains true 2 times consecutively"
+    },
+    {
+      "name": "p_gen_19",
+      "sva": "((busy ##[2:4] (ack ##[2:3] busy)) ##[0:1] (ack ##[2:3] gnt)) |=> busy",
+      "svad": "Logic: When Seq_1 followed by Seq_2 between 0 and 1 cycles later occurs, then in the next cycle, the busy signal must hold.\nDefinitions:\n* Seq_0: the acknowledge (ack) signal followed by the busy signal between 2 and 3 cycles later\n* Seq_1: the busy signal followed by Seq_0 between 2 and 4 cycles later\n* Seq_2: the acknowledge (ack) signal followed by the grant (gnt) signal between 2 and 3 cycles later\n",
+      "property_block": "property p_gen_19;\n  @(posedge clk) ((busy ##[2:4] (ack ##[2:3] busy)) ##[0:1] (ack ##[2:3] gnt)) |=> busy;\nendproperty",
+      "translation": "**1. Relevant Signals:**\n- Clock not specified; sampling assumed at each evaluation cycle\n- Reset not specified in the description, so none assumed\n- Other relevant signals: `ack`, `busy`, `gnt`\n\n2. Check Condition:\nAt each evaluation cycle, the target condition is that Exp_0 holds.\n\n3. Expected Results:\nIn the next cycle, Exp_1 must hold.\n\nDefinitions:\n- Seq_1: the acknowledge (ack) signal followed by the busy signal between 2 and 3 cycles later\n- Seq_0: the busy signal followed by Seq_1 between 2 and 4 cycles later\n- Seq_2: the acknowledge (ack) signal followed by the grant (gnt) signal between 2 and 3 cycles later\n- Exp_0: Seq_0 followed by Seq_2 between 0 and 1 cycles later\n- Exp_1: the busy signal"
+    }
+  ],
+  "module_code": "module sva_test_bench (\n  input logic clk,\n  input logic rst_n\n);\n\n  // Signal Declarations\n  logic req;\n  logic ack;\n  logic gnt;\n  logic valid;\n  logic ready;\n  logic data_en;\n  logic busy;\n\n  // Generated Properties\n  property p_gen_0;\n  @(posedge clk) (((busy[->1:4])[->4:5])[=2:5]) |-> (data_en ##2 req);\nendproperty\n\n  property p_gen_1;\n  @(posedge clk) (busy[->4:5]) |=> ack;\nendproperty\n\n  property p_gen_2;\n  @(posedge clk) req |=> (((ready ##[0:2] data_en)[=3]) throughout (ack[=4:7]));\nendproperty\n\n  property p_gen_3;\n  @(posedge clk) ready |-> ((gnt ##[0:$] (gnt throughout req)) ##[0:2] (gnt and (valid[->3:4])));\nendproperty\n\n  property p_gen_4;\n  @(posedge clk) (((ack intersect ack) ##[0:3] valid)[->5:8]) |=> ready;\nendproperty\n\n  property p_gen_5;\n  @(posedge clk) (busy ##[0:2] gnt) |=> first_match(valid);\nendproperty\n\n  property p_gen_6;\n  @(posedge clk) data_en |-> busy;\nendproperty\n\n  property p_gen_7;\n  @(posedge clk) first_match((data_en[=3:6])) |-> (valid[->2]);\nendproperty\n\n  property p_gen_8;\n  @(posedge clk) (gnt until (((data_en ##[1:4] busy) and (req[->4:5])) ##[0:2] ((ready ##[0:1] gnt) or gnt)));\nendproperty\n\n  property p_gen_9;\n  @(posedge clk) gnt |-> valid;\nendproperty\n\n  property p_gen_10;\n  @(posedge clk) (busy throughout gnt) |=> (gnt[*5:7]);\nendproperty\n\n  property p_gen_11;\n  @(posedge clk) busy |=> ((ready[=5:7]) or ((ack[*1:4]) ##[0:1] (req and req)));\nendproperty\n\n  property p_gen_12;\n  @(posedge clk) (ack and ready);\nendproperty\n\n  property p_gen_13;\n  @(posedge clk) valid |=> ((valid ##[1:$] (busy ##[0:2] valid))[=4:6]);\nendproperty\n\n  property p_gen_14;\n  @(posedge clk) ((gnt[*3:4]) ##[1:3] data_en) |-> data_en;\nendproperty\n\n  property p_gen_15;\n  @(posedge clk) ack |-> ack;\nendproperty\n\n  property p_gen_16;\n  @(posedge clk) disable iff (valid) ((req ##[0:1] (ack ##[2:4] busy)) |=> gnt);\nendproperty\n\n  property p_gen_17;\n  @(posedge clk) data_en |=> ready;\nendproperty\n\n  property p_gen_18;\n  @(posedge clk) gnt |=> ((data_en intersect req)[*2]);\nendproperty\n\n  property p_gen_19;\n  @(posedge clk) ((busy ##[2:4] (ack ##[2:3] busy)) ##[0:1] (ack ##[2:3] gnt)) |=> busy;\nendproperty\n\n  // Assertion Instances\n  assert_p_gen_0: assert property (p_gen_0);\n  assert_p_gen_1: assert property (p_gen_1);\n  assert_p_gen_2: assert property (p_gen_2);\n  assert_p_gen_3: assert property (p_gen_3);\n  assert_p_gen_4: assert property (p_gen_4);\n  assert_p_gen_5: assert property (p_gen_5);\n  assert_p_gen_6: assert property (p_gen_6);\n  assert_p_gen_7: assert property (p_gen_7);\n  assert_p_gen_8: assert property (p_gen_8);\n  assert_p_gen_9: assert property (p_gen_9);\n  assert_p_gen_10: assert property (p_gen_10);\n  assert_p_gen_11: assert property (p_gen_11);\n  assert_p_gen_12: assert property (p_gen_12);\n  assert_p_gen_13: assert property (p_gen_13);\n  assert_p_gen_14: assert property (p_gen_14);\n  assert_p_gen_15: assert property (p_gen_15);\n  assert_p_gen_16: assert property (p_gen_16);\n  assert_p_gen_17: assert property (p_gen_17);\n  assert_p_gen_18: assert property (p_gen_18);\n  assert_p_gen_19: assert property (p_gen_19);\n\nendmodule\n",
+  "validation": {
+    "is_valid": true,
+    "error_message": ""
+  },
+  "valid_count": 20,
+  "invalid_count": 0
+}

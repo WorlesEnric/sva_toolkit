@@ -34,6 +34,7 @@ sva-cot = "sva_toolkit.cot_builder.cli:main"
 sva-dataset = "sva_toolkit.dataset_builder.cli:main"
 sva-benchmark = "sva_toolkit.benchmark.cli:main"
 sva-gen = "sva_toolkit.gen.cli:main"
+svad-translator = "sva_toolkit.svad_translator.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

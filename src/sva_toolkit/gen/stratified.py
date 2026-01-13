@@ -125,9 +125,16 @@ class StratifiedGenerator:
         """Get a random delay specification."""
         return self.synth._get_random_delay()
 
-    def _get_random_count(self) -> str:
+    def _get_random_count(
+        self,
+        allow_range: bool = True,
+        allow_unbounded: bool = True
+    ) -> str:
         """Get a random repetition count."""
-        return self.synth._get_random_repeat_count()
+        return self.synth._get_random_repeat_count(
+            allow_range=allow_range,
+            allow_unbounded=allow_unbounded
+        )
 
     # ========================================================================
     # Property-level constraint generators
@@ -221,7 +228,10 @@ class StratifiedGenerator:
     def generate_goto_repeat(self) -> SVANode:
         """Generate sequence with [-> repetition."""
         expr = self.synth.generate_bool(0)
-        count = self._get_random_count()
+        count = self._get_random_count(
+            allow_range=False,
+            allow_unbounded=False
+        )
         seq = SequenceRepeat(expr, "[->", count)
         return Implication(seq, "|->", self._get_random_signal())
 

@@ -167,21 +167,36 @@ class SVASynthesizer:
             return f"##{d_min}"
         return f"##[{d_min}:{d_max}]"
 
-    def _get_random_repeat_count(self) -> str:
+    def _get_random_repeat_count(
+        self,
+        allow_range: bool = True,
+        allow_unbounded: bool = True
+    ) -> str:
         """
         @brief Generate a random repetition count.
         @return Count string (e.g., "3", "1:5", "0:$")
         """
-        if random.random() < 0.1:  # 10% chance for unbounded
+        if allow_unbounded and random.random() < 0.1:  # 10% chance for unbounded
             min_val = random.randint(0, 2)
             return f"{min_val}:$]"
 
         c_min = random.randint(1, 5)
-        c_max = c_min + random.randint(0, 3)
 
+        if not allow_range:
+            return f"{c_min}]"
+
+        c_max = c_min + random.randint(0, 3)
         if c_min == c_max:
             return f"{c_min}]"
         return f"{c_min}:{c_max}]"
+
+    def _generate_sequence_or_bool(self, depth: int) -> SVANode:
+        """Mix in boolean expressions with sequences for richer coverage."""
+        # Boolean expressions introduce arithmetic/bitwise/system function usage
+        if random.random() < 0.35:
+            bool_depth = max(0, min(depth, self.max_depth - 1))
+            return self.generate_bool(bool_depth)
+        return self.generate_sequence(depth)
 
     def generate_expr(self, depth: int) -> SVANode:
         """
@@ -252,9 +267,9 @@ class SVASynthesizer:
             # Binary comparison (relational or equality)
             op = random.choice(self.RELATIONAL_OPS + self.EQUALITY_OPS)
             return BinaryOp(
-                self.generate_expr(depth + 1),
+                self.generate_expr(0),
                 op,
-                self.generate_expr(depth + 1),
+                self.generate_expr(0),
                 TYPE_BOOL
             )
 
@@ -294,7 +309,10 @@ class SVASynthesizer:
         elif choice < 0.8:  # Sequence repeat
             # Sequence repeat
             op = random.choice(self.REPEAT_OPS)
-            count = self._get_random_repeat_count()
+            count = self._get_random_repeat_count(
+                allow_range=(op != "[->"),
+                allow_unbounded=(op != "[->")
+            )
             return SequenceRepeat(
                 self.generate_sequence(depth + 1),
                 op,
@@ -328,8 +346,8 @@ class SVASynthesizer:
 
         # Implication (most common - increased probability for readability)
         if choice < 0.75:  # Increased from 0.6
-            ante = self.generate_sequence(depth + 1)
-            cons = self.generate_sequence(depth + 1)
+            ante = self._generate_sequence_or_bool(depth + 1)
+            cons = self._generate_sequence_or_bool(depth + 1)
             op = random.choice(self.IMPLICATIONS)
             prop = Implication(ante, op, cons)
 
@@ -337,27 +355,30 @@ class SVASynthesizer:
         elif choice < 0.82 and self.enable_advanced_features and depth < self.max_depth - 1:
             op = random.choice(self.PROPERTY_BIN_OPS)
             # Avoid deep nesting - use sequences instead of properties
-            left_prop = self.generate_sequence(depth + 1)
-            right_prop = self.generate_sequence(depth + 1)
+            left_prop = self._generate_sequence_or_bool(depth + 1)
+            right_prop = self._generate_sequence_or_bool(depth + 1)
             prop = PropertyBinary(left_prop, op, right_prop)
 
         # Until operators - reduced probability
         elif choice < 0.88 and self.enable_advanced_features:
             op = random.choice(self.UNTIL_OPS)
-            left = self.generate_sequence(depth + 1)
-            right = self.generate_sequence(depth + 1)
+            left = self._generate_sequence_or_bool(depth + 1)
+            right = self._generate_sequence_or_bool(depth + 1)
             prop = PropertyUntil(left, op, right)
 
         # If-else property - reduced probability
         elif choice < 0.92 and self.enable_advanced_features:
             condition = self.generate_bool(depth + 1)
-            true_prop = self.generate_sequence(depth + 1)
-            false_prop = self.generate_sequence(depth + 1) if random.random() < 0.5 else None
+            true_prop = self._generate_sequence_or_bool(depth + 1)
+            false_prop = (
+                self._generate_sequence_or_bool(depth + 1)
+                if random.random() < 0.5 else None
+            )
             prop = PropertyIfElse(condition, true_prop, false_prop)
 
         else:
             # Direct sequence as property or "not" property
-            prop = self.generate_sequence(depth + 1)
+            prop = self._generate_sequence_or_bool(depth + 1)
             if random.random() < 0.2:  # Reduced from 0.3
                 prop = NotProperty(prop)
 

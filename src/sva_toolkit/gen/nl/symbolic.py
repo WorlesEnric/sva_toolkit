@@ -232,26 +232,19 @@ class SymbolicSVADGenerator:
     def _handle_SequenceRepeat(self, node: SequenceRepeat, is_root: bool) -> str:
         # {Sub} remains true for n consecutive cycles
         sub = self._process_node(node.expr)
-        
-        count_clean = node.count.strip("[]")
-        count_desc = count_clean
-        
-        if ":" in count_clean:
-             count_desc = f"between {count_clean.replace(':', ' and ')} times"
-        else:
-             count_desc = f"{count_clean} times"
-        
+
+        count_clean = node.count.rstrip("]")
+        count_desc = self._describe_repeat_count(count_clean)
+
         if node.op == "[*":
-             desc = f"{sub} remains true for {count_desc} consecutive cycles"
+            desc = f"{sub} remains true {count_desc} consecutively"
         elif node.op == "[=":
-             # if count is "4 times", make it "4 times"
-             # if count is "between 4 and 5 times", make it "between 4 and 5 times"
-             desc = f"{sub} occurs {count_desc} (non-consecutively) before sequence continues"
+            desc = f"{sub} occurs {count_desc} non-consecutively before the sequence continues"
         elif node.op == "[->":
-             desc = f"the {count_desc} occurrence of {sub} (goto)"
+            desc = f"wait for the {self._ordinal_from_count(count_clean)} occurrence of {sub}"
         else:
-             desc = f"{sub} {node.op} {count_desc}"
-             
+            desc = f"{sub} {node.op} {count_desc}"
+
         if is_root: return desc
         return self._register_complex_node(desc, str(node), "Seq")
 
@@ -296,6 +289,34 @@ class SymbolicSVADGenerator:
             
         return self._format_simple(node)
 
+    def _handle_UnarySysFunction(self, node: UnarySysFunction, is_root: bool) -> str:
+        arg_desc = self._process_node(node.arg)
+        func_desc = {
+            "$rose": f"{arg_desc} rises from low to high",
+            "$fell": f"{arg_desc} falls from high to low",
+            "$stable": f"{arg_desc} remains stable",
+            "$changed": f"{arg_desc} changes value",
+            "$onehot": f"exactly one bit of {arg_desc} is high",
+            "$onehot0": f"at most one bit of {arg_desc} is high",
+            "$isunknown": f"{arg_desc} is unknown (X or Z)",
+            "$countones": f"the count of high bits in {arg_desc}",
+        }
+        desc = func_desc.get(node.func, f"{node.func} applied to {arg_desc}")
+        if is_root:
+            return desc
+        return self._register_complex_node(desc, str(node), "Sys")
+
+    def _handle_PastFunction(self, node: PastFunction, is_root: bool) -> str:
+        signal_desc = self._process_node(node.signal)
+        depth = node.depth if node.depth is not None else 1
+        if depth == 1:
+            desc = f"the previous value of {signal_desc}"
+        else:
+            desc = f"the value of {signal_desc} from {depth} cycles ago"
+        if is_root:
+            return desc
+        return self._register_complex_node(desc, str(node), "Past")
+
     def _handle_Implication(self, node: Implication, is_root: bool) -> str:
         # Nested implication? 
         return self._process_root_logic(node)
@@ -336,3 +357,38 @@ class SymbolicSVADGenerator:
 
     def _handle_default(self, node: SVANode, is_root: bool) -> str:
         return self._format_simple(node)
+
+    def _describe_repeat_count(self, count: str) -> str:
+        """Convert raw repeat count tokens into English."""
+        if ":" in count:
+            min_part, max_part = count.split(":", 1)
+            if max_part == "$":
+                return f"at least {min_part} times"
+            if min_part == max_part:
+                return f"{min_part} times"
+            return f"between {min_part} and {max_part} times"
+
+        if count == "$":
+            return "an unbounded number of times"
+
+        return f"{count} times"
+
+    def _ordinal_from_count(self, count: str) -> str:
+        """Convert count string to ordinal text (1 -> 1st)."""
+        try:
+            num = int(count.split(":")[0])
+        except ValueError:
+            return f"{count}-th"
+
+        suffix = "th"
+        if 10 <= num % 100 <= 20:
+            suffix = "th"
+        else:
+            if num % 10 == 1:
+                suffix = "st"
+            elif num % 10 == 2:
+                suffix = "nd"
+            elif num % 10 == 3:
+                suffix = "rd"
+
+        return f"{num}{suffix}"

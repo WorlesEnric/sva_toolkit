@@ -23,6 +23,7 @@ from sva_toolkit.gen.utils import (
     FIFO_SIGNALS,
     AXI_SIGNALS,
 )
+from sva_toolkit.gen.coverage import compute_coverage_statistics
 
 console = Console()
 
@@ -371,15 +372,17 @@ def _display_generation_result(
             for prop in result.properties
         ]
 
+        coverage_metadata = compute_coverage_statistics(
+            [prop["sva"] for prop in properties_list]
+        )
+
         output_data = {
             "properties": properties_list,
-            "module_code": result.module_code,
-            "validation": {
-                "is_valid": result.validation.is_valid if result.validation else None,
-                "error_message": result.validation.error_message if result.validation else None
-            },
-            "valid_count": result.valid_count,
-            "invalid_count": result.invalid_count
+            "metadata": {
+                "coverage": coverage_metadata,
+                "valid_count": result.valid_count,
+                "invalid_count": result.invalid_count,
+            }
         }
 
         if output_path:
@@ -417,4 +420,3 @@ def _write_output(content: str, output_path: Optional[str]) -> None:
 
 if __name__ == "__main__":
     main()
-
