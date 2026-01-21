@@ -190,7 +190,7 @@ class SVAASTParser:
                 timeout=10
             )
             return True
-        except (FileNotFoundError, subprocess.TimeoutExpired):
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             return False
 
     def _run_verible(self, code: str) -> Dict[str, Any]:

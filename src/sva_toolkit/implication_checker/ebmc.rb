@@ -14,7 +14,8 @@ class Ebmc < Formula
   def install
     system "make", "-C", "lib/cbmc/src", "minisat2-download"
     system "make", "-C", "src"
-    bin.install "src/ebmc/ebmc"
+    system "mkdir", "-p", "#{prefix}/usr/bin"
+    system "cp", "src/ebmc/ebmc", "#{prefix}/usr/bin/"
   end
 
   test do

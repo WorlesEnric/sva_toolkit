@@ -142,7 +142,8 @@ def generate(
     import random
     if seed is not None:
         random.seed(seed)
-        console.print(f"[dim]Using random seed: {seed}[/dim]")
+        if not json_output:
+            console.print(f"[dim]Using random seed: {seed}[/dim]")
 
     # Determine signals to use
     if signals:
@@ -154,11 +155,12 @@ def generate(
 
     # Handle stratified mode
     if mode == 'stratified':
-        console.print(f"[bold blue]SVA Generator - Stratified Mode[/bold blue]")
-        console.print(f"  Mode: Guaranteed coverage of all constructs")
-        console.print(f"  Samples per construct: {samples_per_construct}")
-        console.print(f"  Signals: {', '.join(signal_list)}")
-        console.print()
+        if not json_output:
+            console.print(f"[bold blue]SVA Generator - Stratified Mode[/bold blue]")
+            console.print(f"  Mode: Guaranteed coverage of all constructs")
+            console.print(f"  Samples per construct: {samples_per_construct}")
+            console.print(f"  Signals: {', '.join(signal_list)}")
+            console.print()
 
         generator = StratifiedGenerator(
             signals=signal_list,
@@ -183,10 +185,11 @@ def generate(
         return
 
     # Random mode (original behavior)
-    console.print(f"[bold blue]SVA Generator - Random Mode[/bold blue]")
-    console.print(f"  Target: {num_assertions} properties, Max Depth: {max_depth}")
-    console.print(f"  Signals: {', '.join(signal_list)}")
-    console.print(f"  Verible: {verible_path}")
+    if not json_output:
+        console.print(f"[bold blue]SVA Generator - Random Mode[/bold blue]")
+        console.print(f"  Target: {num_assertions} properties, Max Depth: {max_depth}")
+        console.print(f"  Signals: {', '.join(signal_list)}")
+        console.print(f"  Verible: {verible_path}")
 
     synthesizer = SVASynthesizer(
         signals=signal_list,
@@ -354,6 +357,135 @@ def list_presets() -> None:
     console.print(table)
 
 
+@main.command()
+@click.argument("input_file", type=click.Path(exists=True))
+@click.option(
+    "--top-n",
+    default=None,
+    type=int,
+    help="Show only top N most frequent constructs"
+)
+def coverage(input_file: str, top_n: Optional[int]) -> None:
+    """Analyze SVA construct coverage from a JSON dataset file.
+
+    The input file should contain a JSON object with a 'properties' key
+    containing a list of SVA properties with 'sva' field.
+    """
+    from sva_toolkit.gen.coverage import compute_coverage_statistics, CATEGORIES, SVA_CONSTRUCTS
+
+    # Load JSON file
+    try:
+        with open(input_file, 'r') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        console.print(f"[red]Error: Invalid JSON file: {e}[/red]")
+        sys.exit(1)
+
+    # Extract SVA strings
+    if isinstance(data, dict) and 'properties' in data:
+        properties = data['properties']
+    elif isinstance(data, list):
+        properties = data
+    else:
+        console.print("[red]Error: Expected JSON with 'properties' key or a list[/red]")
+        sys.exit(1)
+
+    # Extract SVA codes
+    sva_codes = []
+    for prop in properties:
+        if isinstance(prop, dict) and 'sva' in prop:
+            sva_codes.append(prop['sva'])
+        elif isinstance(prop, str):
+            sva_codes.append(prop)
+
+    if not sva_codes:
+        console.print("[yellow]Warning: No SVA properties found in input file[/yellow]")
+        sys.exit(0)
+
+    # Compute coverage
+    stats = compute_coverage_statistics(sva_codes)
+
+    # Display header
+    console.print(Panel(
+        f"[bold cyan]Coverage Analysis[/bold cyan]\n"
+        f"Dataset: {input_file}\n"
+        f"Properties: {stats['total_properties']}",
+        border_style="cyan"
+    ))
+
+    # Summary statistics
+    summary_table = Table(title="Coverage Summary", show_header=False, box=None)
+    summary_table.add_column("Metric", style="cyan", width=30)
+    summary_table.add_column("Value", style="bold green")
+
+    summary_table.add_row("Total Constructs", str(stats['constructs_total']))
+    summary_table.add_row("Covered Constructs", str(stats['constructs_covered']))
+    summary_table.add_row("Coverage Percentage", f"{stats['coverage_pct']:.1f}%")
+
+    console.print(summary_table)
+    console.print()
+
+    # Category-wise coverage
+    for category, constructs in stats['categories'].items():
+        table = Table(title=category, show_lines=False)
+        table.add_column("Construct", style="yellow", width=25)
+        table.add_column("In Properties", style="cyan", justify="right", width=15)
+        table.add_column("Coverage %", style="magenta", justify="right", width=12)
+        table.add_column("Occurrences", style="green", justify="right", width=12)
+
+        # Sort by coverage percentage (descending)
+        constructs_sorted = sorted(constructs, key=lambda x: x['coverage_pct'], reverse=True)
+
+        # Apply top_n filter if specified
+        if top_n:
+            constructs_sorted = constructs_sorted[:top_n]
+
+        for construct_info in constructs_sorted:
+            status = "✓" if construct_info['properties_with_construct'] > 0 else "✗"
+            desc = construct_info['description']
+            props_count = construct_info['properties_with_construct']
+            coverage = construct_info['coverage_pct']
+            occurrences = construct_info['occurrences']
+
+            # Color coding based on coverage
+            if coverage > 50:
+                style = "green"
+            elif coverage > 20:
+                style = "yellow"
+            elif coverage > 0:
+                style = "dim yellow"
+            else:
+                style = "dim red"
+
+            table.add_row(
+                f"{status} {desc}",
+                f"[{style}]{props_count}[/{style}]",
+                f"[{style}]{coverage:.1f}%[/{style}]",
+                f"[{style}]{occurrences}[/{style}]"
+            )
+
+        console.print(table)
+        console.print()
+
+    # Missing constructs (if any)
+    if stats['missing_constructs']:
+        console.print(f"[bold red]Missing Constructs ({len(stats['missing_constructs'])}):[/bold red]")
+        missing_table = Table(show_header=False, box=None)
+        missing_table.add_column("", style="dim red")
+
+        for missing in stats['missing_constructs'][:10]:  # Show first 10
+            missing_table.add_row(f"✗ {missing['description']} ({missing['key']})")
+
+        console.print(missing_table)
+
+        if len(stats['missing_constructs']) > 10:
+            console.print(f"[dim]... and {len(stats['missing_constructs']) - 10} more[/dim]")
+    else:
+        console.print("[bold green]✓ All constructs covered![/bold green]")
+
+    console.print()
+
+
 def _display_generation_result(
     result: GenerationResult,
     json_output: bool,
@@ -391,7 +523,7 @@ def _display_generation_result(
             console.print(f"[dim]JSON output written to: {output_path}[/dim]")
             console.print(f"[green]✓[/green] Generated {len(result.properties)} SVA-SVAD pairs")
         else:
-            console.print(json.dumps(output_data, indent=2))
+            print(json.dumps(output_data, indent=2))
     else:
         _write_output(result.module_code, output_path)
         if result.validation:
