@@ -75,7 +75,7 @@ graph TD
 |---------|---------------|--------|------------|-------------|----------|-------------|
 | T1 | Codex | DONE | 100 | 2026-04-13 15:23 CST | — | T2 and T3 may begin from the V3 scaffold |
 | T2 | Codex | DONE | 100 | 2026-04-13 15:32 CST | — | Runtime module ported and validated |
-| T3 | — | NOT_STARTED | 0 | 2026-04-13 | T1 | Port SVA parser |
+| T3 | Codex | DONE | 100 | 2026-04-13 15:35 CST | — | T3 complete; T4, T5, T6, and T7 may proceed against the ported SVA module |
 | T4 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port formal module |
 | T5 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port timing module |
 | T6 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port generator module |
@@ -297,4 +297,11 @@ graph TD
   Summary: Ported the V2 runtime module into `v3/sva-toolkit/src/sva_toolkit/runtime/` and added a new `runtime/llm.py` from V1 with lazy `openai` import, env-backed API key config, and explicit optional-dependency error handling.
   Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/runtime/__init__.py`, `v3/sva-toolkit/src/sva_toolkit/runtime/config.py`, `v3/sva-toolkit/src/sva_toolkit/runtime/tools.py`, `v3/sva-toolkit/src/sva_toolkit/runtime/process.py`, `v3/sva-toolkit/src/sva_toolkit/runtime/llm.py`, `v3/sva-toolkit/tests/runtime/test_config.py`, `v3/sva-toolkit/tests/runtime/test_tools.py`, `v3/sva-toolkit/tests/runtime/test_process.py`, `v3/sva-toolkit/tests/runtime/test_runtime_imports.py`, `v3/sva-toolkit/tests/runtime/test_llm.py`
   Validation: `pytest tests/runtime/ -q` passed (`16 passed`), and `ruff check src/sva_toolkit/runtime/` passed.
+[2026-04-13 15:28 CST] [T3] [Codex] Status changed: IN_PROGRESS.
+  Summary: Confirmed T1 is DONE, claimed T3, and began a direct V2→V3 port of the custom SVA parser module under `v3/sva-toolkit/src/sva_toolkit/sva/` with matching tests under `v3/sva-toolkit/tests/sva/`.
+  Planned validation: `pytest tests/sva/ -q`, `ruff check src/sva_toolkit/sva/`, and roundtrip coverage via the imported V2 test suite.
+[2026-04-13 15:35 CST] [T3] [Codex] Status changed: DONE.
+  Summary: Ported the full V2 SVA parser module and all V2 SVA tests into V3, preserving module/test structure and V2 `sva.__init__` exports. Applied only minimal fixes for obvious issues found during verification: missing AST imports in `parser.py`, two unused imports flagged by `ruff`, and a scoped dependency port of `timing/core/conditions.py` required by `sva.lowerings.conditions` and `tests/sva/test_condition_lowering.py`.
+  Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/sva/__init__.py`, `v3/sva-toolkit/src/sva_toolkit/sva/{ast.py,lexer.py,parser.py,emitter.py,errors.py,analysis.py,transforms.py,visitors.py}`, `v3/sva-toolkit/src/sva_toolkit/sva/lowerings/{__init__.py,conditions.py}`, `v3/sva-toolkit/src/sva_toolkit/timing/core/conditions.py`, `v3/sva-toolkit/tests/sva/{test_parser.py,test_emitter.py,test_roundtrip.py,test_visitors.py,test_condition_lowering.py}`
+  Validation: `pytest tests/sva/ -q` → `75 passed`; `ruff check src/sva_toolkit/sva/` → clean; explicit AST roundtrip probe with `PYTHONPATH=src python -c '...'` confirmed parse → emit → parse preserves AST equality for representative expression, sequence, property-body, and property-text cases.
 ```
