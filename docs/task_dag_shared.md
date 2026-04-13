@@ -76,7 +76,7 @@ graph TD
 | T1 | Codex | DONE | 100 | 2026-04-13 15:23 CST | — | T2 and T3 may begin from the V3 scaffold |
 | T2 | Codex | DONE | 100 | 2026-04-13 15:32 CST | — | Runtime module ported and validated |
 | T3 | Codex | DONE | 100 | 2026-04-13 15:35 CST | — | T3 complete; T4, T5, T6, and T7 may proceed against the ported SVA module |
-| T4 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port formal module |
+| T4 | Codex | DONE | 100 | 2026-04-13 15:45 CST | — | T4 complete; T8 and T9 may proceed against the ported formal module |
 | T5 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port timing module |
 | T6 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port generator module |
 | T7 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port describe module |
@@ -304,4 +304,8 @@ graph TD
   Summary: Ported the full V2 SVA parser module and all V2 SVA tests into V3, preserving module/test structure and V2 `sva.__init__` exports. Applied only minimal fixes for obvious issues found during verification: missing AST imports in `parser.py`, two unused imports flagged by `ruff`, and a scoped dependency port of `timing/core/conditions.py` required by `sva.lowerings.conditions` and `tests/sva/test_condition_lowering.py`.
   Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/sva/__init__.py`, `v3/sva-toolkit/src/sva_toolkit/sva/{ast.py,lexer.py,parser.py,emitter.py,errors.py,analysis.py,transforms.py,visitors.py}`, `v3/sva-toolkit/src/sva_toolkit/sva/lowerings/{__init__.py,conditions.py}`, `v3/sva-toolkit/src/sva_toolkit/timing/core/conditions.py`, `v3/sva-toolkit/tests/sva/{test_parser.py,test_emitter.py,test_roundtrip.py,test_visitors.py,test_condition_lowering.py}`
   Validation: `pytest tests/sva/ -q` → `75 passed`; `ruff check src/sva_toolkit/sva/` → clean; explicit AST roundtrip probe with `PYTHONPATH=src python -c '...'` confirmed parse → emit → parse preserves AST equality for representative expression, sequence, property-body, and property-text cases.
+[2026-04-13 15:45 CST] [T4] [Codex] Status changed: DONE.
+  Summary: Ported the full V2 formal verification module into `v3/sva-toolkit/src/sva_toolkit/formal/`, preserved the V2 model/parse/normalize behavior, adapted `FormalService` to use V3 `ToolRegistry` discovery, and kept backend subprocess execution on `runtime.process.run_tool`. Added the V2 formal tests plus V3-specific service/backend tests that mock EBMC and VC Formal execution.
+  Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/formal/{__init__.py,model.py,parse.py,normalize.py,service.py}`, `v3/sva-toolkit/src/sva_toolkit/formal/backends/{__init__.py,ebmc.py,vcformal.py}`, `v3/sva-toolkit/tests/formal/{test_model.py,test_parse.py,test_service.py}`, `v3/sva-toolkit/tests/formal/backends/{test_ebmc.py,test_vcformal.py}`
+  Validation: `env PYTHONPATH=src python -m pytest -q tests/formal` → `26 passed`; `python -m ruff check src/sva_toolkit/formal/` → clean.
 ```
