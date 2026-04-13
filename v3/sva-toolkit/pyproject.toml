@@ -8,7 +8,7 @@ version = "3.0.0a1"
 description = "SVA toolkit for formal verification, timing diagrams, and assertion workflows"
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
+license = { text = "MIT" }
 authors = [{ name = "SVA Toolkit Authors" }]
 dependencies = [
     "click>=8.0.0",
@@ -51,3 +51,6 @@ line-length = 120
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+markers = [
+    "integration: cross-module CLI and workflow integration coverage",
+]

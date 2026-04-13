@@ -185,7 +185,9 @@ def test_data_benchmark_writes_json_results(tmp_path: Path, monkeypatch: pytest.
             self.num_workers = num_workers
             self.cache_dir = cache_dir
 
-        def run_benchmark(self, dataset, llm_client, *, use_multiprocessing=True, rate_limit_delay=0.5, progress_callback=None):
+        def run_benchmark(
+            self, dataset, llm_client, *, use_multiprocessing=True, rate_limit_delay=0.5, progress_callback=None
+        ):
             assert dataset[0]["SVAD"].startswith("Acknowledge")
             assert llm_client.config.model == "fake-model"
             return data_module.BenchmarkResult(

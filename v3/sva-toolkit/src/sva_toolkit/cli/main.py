@@ -157,7 +157,9 @@ def _build_benchmark_runner(model: str, workers: int):
     )
 
 
-@click.group(help="SVA Toolkit unified CLI for parsing, formal analysis, timing, generation, description, and data workflows.")
+@click.group(
+    help="SVA Toolkit unified CLI for parsing, formal analysis, timing, generation, description, and data workflows."
+)
 @click.version_option(__version__, prog_name="sva")
 def main() -> None:
     """Top-level `sva` command group."""
@@ -277,7 +279,9 @@ def timing_validate(input_file: str) -> None:
 @timing.command("emit-sva")
 @click.argument("input_file", type=click.Path(exists=True, dir_okay=False))
 @click.option("-o", "--output", type=click.Path(dir_okay=False))
-@click.option("--allow-lossy", is_flag=True, help="Allow unsupported constructs to be emitted with lossy approximations.")
+@click.option(
+    "--allow-lossy", is_flag=True, help="Allow unsupported constructs to be emitted with lossy approximations."
+)
 @_handle_cli_errors
 def timing_emit_sva(input_file: str, output: str | None, allow_lossy: bool) -> None:
     """Emit parameterized SVA from a timing diagram file."""
@@ -316,9 +320,7 @@ def timing_bundle_sva(input_files: tuple[str, ...], output: str | None) -> None:
         raise click.ClickException("at least one input file is required")
 
     scenarios = tuple(
-        document
-        for input_file in input_files
-        for document in _extract_sva_documents(input_file, depth=32, timeout=60)
+        document for input_file in input_files for document in _extract_sva_documents(input_file, depth=32, timeout=60)
     )
     rendered = "\n\n".join(emit_timing_dsl(document) for document in bundle_sva_scenarios(scenarios))
     _write_text_output(output, rendered)
@@ -375,7 +377,9 @@ def generate_command(count: int, mode: str, validate: bool, coverage: bool) -> N
 
 @describe.command("svad")
 @click.argument("sva_code_or_file")
-@click.option("--format", "output_format", type=click.Choice(["text", "json", "markdown"]), default="text", show_default=True)
+@click.option(
+    "--format", "output_format", type=click.Choice(["text", "json", "markdown"]), default="text", show_default=True
+)
 @_handle_cli_errors
 def describe_svad(sva_code_or_file: str, output_format: str) -> None:
     """Render an SVAD description for an assertion."""
@@ -390,7 +394,9 @@ def describe_svad(sva_code_or_file: str, output_format: str) -> None:
 
 @describe.command("cot")
 @click.argument("sva_code_or_file")
-@click.option("--format", "output_format", type=click.Choice(["text", "json", "markdown"]), default="text", show_default=True)
+@click.option(
+    "--format", "output_format", type=click.Choice(["text", "json", "markdown"]), default="text", show_default=True
+)
 @_handle_cli_errors
 def describe_cot(sva_code_or_file: str, output_format: str) -> None:
     """Render chain-of-thought style reasoning for an assertion."""
