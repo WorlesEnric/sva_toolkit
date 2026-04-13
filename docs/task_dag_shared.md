@@ -80,7 +80,7 @@ graph TD
 | T5 | Codex | DONE | 100 | 2026-04-13 15:45 CST | — | Timing module ported and validated; T9 may consume T5 once T6/T7/T8 are complete |
 | T6 | Codex | DONE | 100 | 2026-04-13 16:08 CST | — | T6 complete; T9 may consume `generate/` once T4, T5, T7, and T8 are also complete |
 | T7 | Codex | DONE | 100 | 2026-04-13 15:48 CST | — | T7 complete; T8 may proceed once T4 is done, and T9 may proceed after T4-T8 complete |
-| T8 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T4, T7 | Port data workflows |
+| T8 | Codex | DONE | 100 | 2026-04-13 16:11 CST | — | T8 complete; T9 may proceed against the ported `data/` workflows |
 | T9 | — | NOT_STARTED | 0 | 2026-04-13 | T4–T8 | Build unified CLI |
 | T10 | — | NOT_STARTED | 0 | 2026-04-13 | T9 | Write documentation |
 | T11 | — | NOT_STARTED | 0 | 2026-04-13 | T9 | Add integration tests |
@@ -326,4 +326,8 @@ graph TD
   Summary: Ported V1's template-based SVAD translator and CoT builder into `v3/sva-toolkit/src/sva_toolkit/describe/`, replacing the Verible-backed `ast_parser` dependency with a describe-local compatibility parser over `sva_toolkit.sva`. The port preserves the V1 translation/CoT templates, accepts raw SVA strings directly, exports a structured `CoTSection` API, and adds describe tests covering translator output plus CoT markdown/section behavior.
   Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/describe/{__init__.py,translator.py,cot.py}`, `v3/sva-toolkit/tests/describe/{test_translator.py,test_cot.py}`
   Validation: `pytest tests/describe/ -q` → `4 passed`; `ruff check src/sva_toolkit/describe/` → `All checks passed!`; targeted sample run via `PYTHONPATH=src python - <<'PY' ...` produced readable SVAD output with signal/reset sections and structured CoT output with five reasoning steps.
+[2026-04-13 16:11 CST] [T8] [Codex] Status changed: DONE.
+  Summary: Ported the V1 dataset builder and benchmark runner into `v3/sva-toolkit/src/sva_toolkit/data/` as thin V3 adapters over `runtime.llm.LLMClient`, `describe.SVACoTBuilder`, `describe.SVADTranslator`, and `formal.FormalService`. Preserved progress-cache behavior with top-level worker functions for multiprocessing, added offline dataset mode that skips SVAD when no LLM is configured, kept translator fallback for failed LLM description generation, and added focused mocked tests for dataset output structure, cache reuse, benchmark relationship classification, and aggregated metrics.
+  Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/data/{__init__.py,dataset.py,benchmark.py}`, `v3/sva-toolkit/tests/data/{test_dataset.py,test_benchmark.py}`
+  Validation: `pytest tests/data/ -q` → `11 passed`; `ruff check src/sva_toolkit/data/` → `All checks passed!`
 ```
