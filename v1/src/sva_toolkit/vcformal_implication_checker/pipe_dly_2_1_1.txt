@@ -1,0 +1,26 @@
+
+  Summary Results
+   Property Summary: FPV
+   -----------------
+   > Assertion
+     - # found        : 1
+     - # vacuous      : 1
+
+   > Vacuity
+     - # found        : 1
+     - # vacuous      : 1
+
+   > Witness
+     - # found        : 1
+     - # uncoverable  : 1
+
+
+  List Results
+   Property List:
+   --------------
+   > Assertion
+     # Assertion: 1
+     [  0] vacuous                  (vacuous)      -  pipe_dly.assert_p_dout_comb_path_delay0
+
+
+

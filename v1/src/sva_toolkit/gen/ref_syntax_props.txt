@@ -1,0 +1,115 @@
+**1. Logical operators:** The result is a 1-bit logical value, used for conditional statements (if/while/assert, etc.):
+
+! Logical NOT
+
+&& Logical AND (short-circuit)
+
+|| Logical OR (short-circuit)
+
+**2. Bitwise operators:** Operate on each bit independently, the result width is the same as the operand:
+
+~ Bitwise NOT
+
+& Bitwise AND
+
+| Bitwise OR
+
+^ Bitwise XOR
+
+^~ Bitwise XNOR
+
+~^ Bitwise XNOR (equivalent to ^~)
+
+**3.1 Relational operators:**
+
+< Less than
+
+<= Less than or equal to
+
+> Greater than
+
+>= Greater than or equal to
+
+**3.2 Equality operators:**
+
+== Equality (compares two values, encountering X/Z) Possible output X)
+
+!= Inequality (2-value comparison, may output X when encountering X/Z)
+
+=== Strict equality (4-value comparison, treats X/Z as comparable values)
+
+!== Completely inequalities (4-value comparison)
+
+** 4.1 Binary Arithmetic Operators
+
++ Addition
+
+- Subtraction
+
+* Multiplication
+
+/ Division
+
+% Modulus / Remainder
+
+** SVA Functions
+
+$rose Returns true when the signal/expression changes from '0' in the previous clock cycle to '1' in the current cycle.
+
+$fell Returns true when the signal/expression changes from '1' in the previous clock cycle to '0' in the current cycle.
+
+$stable Returns true when the value of the signal/expression is the same as in the previous clock cycle.
+
+$changed Returns true when the value of the signal/expression changes compared to the previous clock cycle.
+
+$past Returns the value of the signal several clock cycles ago. By default, it provides the value of the signal in the previous clock cycle.
+
+$onehot: At any given clock edge, only one bit of the expression is high.
+
+$onehot0: At any given clock edge, only one bit of the expression is high, or no bits are high.
+
+$isunknown: Checks if any bit of the expression is X or Z.
+
+$countones: Counts the bits that are equal to 1.
+
+**Keywords**
+not
+ended
+or
+and
+first_match
+throughout
+disable iff
+intersect
+if else
+until
+until_with
+
+**Implication Operators**
+|->
+
+**Timing Delay**
+
+##1 ##2
+
+##[1:3]
+
+##[0:$]
+
+**Selection Operators** a? b:c
+
+?
+
+**Repetition Operators**
+
+[*5]
+
+[=5]
+
+[->5]
+
+[*1:5]
+
+[=1:5]
+
+[->1:5]

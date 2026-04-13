@@ -1,0 +1,26 @@
+
+  Summary Results
+   Property Summary: FPV
+   -----------------
+   > Assertion
+     - # found        : 1
+     - # proven       : 1
+
+   > Vacuity
+     - # found        : 1
+     - # non_vacuous  : 1
+
+   > Witness
+     - # found        : 1
+     - # covered      : 1
+
+
+  List Results
+   Property List:
+   --------------
+   > Assertion
+     # Assertion: 1
+     [  0] proven                   (non_vacuous)  -  pipe_dly.ap_delay_reg_propagation
+
+
+

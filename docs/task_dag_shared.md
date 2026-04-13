@@ -1,0 +1,292 @@
+# SVA Toolkit V3 — Shared Worker Collaboration Document
+
+---
+
+# 1. Worker Instructions
+
+**Read this document before starting any task.**
+
+1. **Check task status** — Only work on tasks whose dependencies are all `DONE`. If a dependency is not done, set your task to `BLOCKED` and record the blocker.
+2. **Claim your task** — Before starting, update the status table: set status to `IN_PROGRESS`, fill in your worker name, and set the timestamp.
+3. **Stay in scope** — Only work on files listed in your task's focus areas. Do not silently change task scope or edit unrelated modules.
+4. **Record progress** — If you must stop before completing, update the status table with progress %, record touched files, remaining work, and blockers in the update log.
+5. **Coordinate on hot files** — Only T1 and T9 may modify `pyproject.toml` and root `__init__.py`. If you need a dependency added, record it in the update log for T9.
+6. **Validate before finishing** — Run the validation steps listed in your task card. Do not mark a task as `DONE` if tests fail.
+7. **Update on completion** — Set status to `DONE`, progress to 100%, append a completion entry to the update log with touched files and summary.
+8. **Preserve consistency** — Do not contradict the task DAG. If you discover the DAG needs adjustment, record it as a note — do not unilaterally change other tasks.
+
+**Reference documents:**
+- `v1/` — V1 source code (read-only reference for porting)
+- `v2/sva-tools/` — V2 source code (read-only reference for porting)
+- `v1/docs/plans/2026-03-13-robust-sva-toolkit-refactor.md` — Original refactoring plan
+- `docs/task_dag_planning.md` — Human-facing planning document (architecture context)
+
+---
+
+# 2. Task DAG Diagram
+
+```mermaid
+graph TD
+  T1["T1: Project Scaffold"] --> T2["T2: Runtime Infrastructure"]
+  T1 --> T3["T3: SVA Parser Module"]
+  T2 --> T4["T4: Formal Verification"]
+  T3 --> T4
+  T2 --> T5["T5: Timing Diagrams"]
+  T3 --> T5
+  T2 --> T6["T6: SVA Generator"]
+  T3 --> T6
+  T2 --> T7["T7: Description Engine"]
+  T3 --> T7
+  T2 --> T8["T8: Data Workflows"]
+  T4 --> T8
+  T7 --> T8
+  T4 --> T9["T9: Unified CLI"]
+  T5 --> T9
+  T6 --> T9
+  T7 --> T9
+  T8 --> T9
+  T9 --> T10["T10: Documentation & Examples"]
+  T9 --> T11["T11: Integration Tests & CI"]
+```
+
+---
+
+# 3. Task Dependency Table
+
+| Task ID | Task Name | Depends On | Blocks | Parallelizable With | Primary Areas Touched |
+|---------|-----------|------------|--------|---------------------|-----------------------|
+| T1 | Project Scaffold | — | T2, T3 | — | `v3/sva-toolkit/` (root, pyproject.toml, CI, Makefile) |
+| T2 | Runtime Infrastructure | T1 | T4, T5, T6, T7, T8 | T3 | `src/sva_toolkit/runtime/`, `tests/runtime/` |
+| T3 | SVA Parser Module | T1 | T4, T5, T6, T7 | T2 | `src/sva_toolkit/sva/`, `tests/sva/` |
+| T4 | Formal Verification | T2, T3 | T8, T9 | T5, T6, T7 | `src/sva_toolkit/formal/`, `tests/formal/` |
+| T5 | Timing Diagrams | T2, T3 | T9 | T4, T6, T7 | `src/sva_toolkit/timing/`, `tests/timing/` |
+| T6 | SVA Generator | T2, T3 | T9 | T4, T5, T7 | `src/sva_toolkit/generate/`, `tests/generate/` |
+| T7 | Description Engine | T2, T3 | T8, T9 | T4, T5, T6 | `src/sva_toolkit/describe/`, `tests/describe/` |
+| T8 | Data Workflows | T2, T4, T7 | T9 | — | `src/sva_toolkit/data/`, `tests/data/` |
+| T9 | Unified CLI | T4, T5, T6, T7, T8 | T10, T11 | — | `src/sva_toolkit/cli/`, `tests/cli/`, `pyproject.toml` |
+| T10 | Documentation & Examples | T9 | — | T11 | `README.md`, `docs/`, `examples/` |
+| T11 | Integration Tests & CI | T9 | — | T10 | `tests/integration/`, `.github/workflows/ci.yml` |
+
+---
+
+# 4. Task Status Table
+
+| Task ID | Owner / Worker | Status | Progress % | Last Update | Blockers | Next Action |
+|---------|---------------|--------|------------|-------------|----------|-------------|
+| T1 | — | NOT_STARTED | 0 | 2026-04-13 | — | Create v3/sva-toolkit/ scaffold |
+| T2 | — | NOT_STARTED | 0 | 2026-04-13 | T1 | Port runtime module |
+| T3 | — | NOT_STARTED | 0 | 2026-04-13 | T1 | Port SVA parser |
+| T4 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port formal module |
+| T5 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port timing module |
+| T6 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port generator module |
+| T7 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port describe module |
+| T8 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T4, T7 | Port data workflows |
+| T9 | — | NOT_STARTED | 0 | 2026-04-13 | T4–T8 | Build unified CLI |
+| T10 | — | NOT_STARTED | 0 | 2026-04-13 | T9 | Write documentation |
+| T11 | — | NOT_STARTED | 0 | 2026-04-13 | T9 | Add integration tests |
+
+---
+
+# 5. Task Detail Cards
+
+## T1: Project Scaffold
+
+- **Objective:** Create the V3 project directory at `v3/sva-toolkit/` with complete package scaffold, `pyproject.toml`, CI, Makefile, and empty subpackage structure.
+- **Dependencies:** None
+- **Deliverables:**
+  - `v3/sva-toolkit/pyproject.toml` (sva-toolkit v3.0.0a1, Python 3.11+, all extras)
+  - Directory tree: `src/sva_toolkit/{cli,sva,formal,timing,generate,describe,data,runtime}/`
+  - Nested dirs: `formal/backends/`, `sva/lowerings/`, `timing/{core,frontend,bridge,projection,render}/`, `generate/nl/`
+  - `tests/` mirroring src structure
+  - `.github/workflows/ci.yml`, `Makefile`, `.gitignore`, `README.md`
+- **Validation:**
+  - [ ] `pip install -e ".[dev]"` succeeds
+  - [ ] `ruff check src/` passes
+  - [ ] `pytest` runs (0 tests OK)
+  - [ ] `python -m build` produces wheel
+- **Files touched:** Everything under `v3/sva-toolkit/`
+- **Notes:** This is the foundation. All `__init__.py` files should be empty except root (`__version__ = "3.0.0a1"`).
+
+---
+
+## T2: Runtime Infrastructure
+
+- **Objective:** Port V2's runtime module (tools, process, config) and V1's LLM client to `v3/sva-toolkit/src/sva_toolkit/runtime/`.
+- **Dependencies:** T1
+- **Deliverables:**
+  - `runtime/config.py` — ToolkitConfig, ToolConfig
+  - `runtime/tools.py` — ToolRegistry, create_default_registry
+  - `runtime/process.py` — RunResult, run_tool, make_work_dir
+  - `runtime/llm.py` — LLMClient, LLMConfig (lazy openai import)
+  - `runtime/__init__.py` — public exports
+  - `tests/runtime/` — unit tests (LLM tests use mocks)
+- **Validation:**
+  - [ ] `pytest tests/runtime/ -q` passes
+  - [ ] `ruff check src/sva_toolkit/runtime/`
+  - [ ] No import-time side effects
+- **Files touched:** `src/sva_toolkit/runtime/*`, `tests/runtime/*`
+- **Notes:** Port V2 runtime as-is. LLM client is new — port from V1's `utils/llm_client.py` with env-var config.
+
+---
+
+## T3: SVA Parser Module
+
+- **Objective:** Port V2's custom SVA parser to `v3/sva-toolkit/src/sva_toolkit/sva/`.
+- **Dependencies:** T1
+- **Deliverables:**
+  - All files from V2's `sva/` module: lexer, parser, ast, emitter, errors, analysis, transforms, visitors, lowerings
+  - All V2 SVA tests ported
+- **Validation:**
+  - [ ] `pytest tests/sva/ -q` passes
+  - [ ] `ruff check src/sva_toolkit/sva/`
+  - [ ] Roundtrip: parse → emit → parse = identical AST
+- **Files touched:** `src/sva_toolkit/sva/*`, `tests/sva/*`
+- **Notes:** Direct port. Verify all internal imports use `sva_toolkit.sva.*` paths.
+
+---
+
+## T4: Formal Verification
+
+- **Objective:** Port V2's formal verification module to `v3/sva-toolkit/src/sva_toolkit/formal/`.
+- **Dependencies:** T2, T3
+- **Deliverables:**
+  - FormalService, FormalProperty, CheckResult, ImplicationResult
+  - EBMC and VCFormal backend adapters
+  - Property parsing via `sva.parser`
+  - Unit tests with mocked backends
+- **Validation:**
+  - [ ] `pytest tests/formal/ -q` passes
+  - [ ] `ruff check src/sva_toolkit/formal/`
+- **Files touched:** `src/sva_toolkit/formal/*`, `tests/formal/*`
+- **Notes:** Ensure backends use `runtime.tools` for discovery and `runtime.process` for execution.
+
+---
+
+## T5: Timing Diagrams
+
+- **Objective:** Port V2's timing diagram module to `v3/sva-toolkit/src/sva_toolkit/timing/`.
+- **Dependencies:** T2, T3
+- **Deliverables:**
+  - Complete timing module: frontend, core, bridge, projection, render
+  - All V2 timing tests ported
+- **Validation:**
+  - [ ] `pytest tests/timing/ -q` passes
+  - [ ] `ruff check src/sva_toolkit/timing/`
+  - [ ] Optional deps (cairosvg, wavedrom) handled with pytest.importorskip
+- **Files touched:** `src/sva_toolkit/timing/*`, `tests/timing/*`
+- **Notes:** Bridge modules import from `formal.model` — ensure T4 is done or stub the imports.
+
+---
+
+## T6: SVA Generator
+
+- **Objective:** Port V1's SVA generator to `v3/sva-toolkit/src/sva_toolkit/generate/`, adapted to V3 standards.
+- **Dependencies:** T2, T3
+- **Deliverables:**
+  - SVASynthesizer, type system, coverage analysis, NL IR, stratified generation
+  - Curated signal presets (replace 20k-line pool)
+  - Verible validation via runtime.tools
+  - Unit tests
+- **Validation:**
+  - [ ] `pytest tests/generate/ -q` passes
+  - [ ] `ruff check src/sva_toolkit/generate/`
+  - [ ] Generated SVA is syntactically valid
+- **Files touched:** `src/sva_toolkit/generate/*`, `tests/generate/*`
+- **Notes:** Highest adaptation effort. V1's gen/ uses V1 AST types — adapt to V3's `sva.ast` or keep self-contained types.
+
+---
+
+## T7: Description Engine
+
+- **Objective:** Port V1's SVAD translator and CoT builder to `v3/sva-toolkit/src/sva_toolkit/describe/`.
+- **Dependencies:** T2, T3
+- **Deliverables:**
+  - SVADTranslator (from V1's 966-line translator.py)
+  - SVACoTBuilder (from V1's cot_builder)
+  - Both rewired to use V3's `sva.parser`
+  - Unit tests
+- **Validation:**
+  - [ ] `pytest tests/describe/ -q` passes
+  - [ ] `ruff check src/sva_toolkit/describe/`
+  - [ ] SVAD output is readable NL; CoT has structured sections
+- **Files touched:** `src/sva_toolkit/describe/*`, `tests/describe/*`
+- **Notes:** The translator is large (966 lines). Port methodically. May need adapter for V1→V3 AST type mapping.
+
+---
+
+## T8: Data Workflows
+
+- **Objective:** Port V1's dataset builder and benchmark runner to `v3/sva-toolkit/src/sva_toolkit/data/`.
+- **Dependencies:** T2, T4, T7
+- **Deliverables:**
+  - DatasetBuilder using runtime.llm + describe.cot
+  - BenchmarkRunner using runtime.llm + formal.service
+  - Multiprocessing with caching
+  - Offline mode (no LLM)
+  - Unit tests with mocked dependencies
+- **Validation:**
+  - [ ] `pytest tests/data/ -q` passes
+  - [ ] `ruff check src/sva_toolkit/data/`
+  - [ ] Mocked dataset build produces valid JSONL structure
+- **Files touched:** `src/sva_toolkit/data/*`, `tests/data/*`
+- **Notes:** Most dependencies of any task. Ensure all upstream modules are stable before starting.
+
+---
+
+## T9: Unified CLI
+
+- **Objective:** Build the `sva` CLI entry point wiring all domain modules.
+- **Dependencies:** T4, T5, T6, T7, T8
+- **Deliverables:**
+  - `cli/main.py` with subcommand groups: parse, formal, timing, generate, describe, data
+  - CLI smoke tests via CliRunner
+  - Updated `pyproject.toml` scripts entry
+- **Validation:**
+  - [ ] `sva --help` shows all groups
+  - [ ] `pytest tests/cli/ -q` passes
+  - [ ] Each subcommand responds to `--help`
+- **Files touched:** `src/sva_toolkit/cli/*`, `tests/cli/*`, `pyproject.toml`, `src/sva_toolkit/__init__.py`
+- **Notes:** Only task (besides T1) that modifies `pyproject.toml`. Use lazy imports for all domain modules.
+
+---
+
+## T10: Documentation & Examples
+
+- **Objective:** Write comprehensive docs and create runnable examples.
+- **Dependencies:** T9
+- **Deliverables:**
+  - Comprehensive README.md
+  - Per-module docs in `docs/`
+  - Architecture overview
+  - Example files and scripts in `examples/`
+- **Validation:**
+  - [ ] Example commands work
+  - [ ] No broken links
+- **Files touched:** `README.md`, `docs/*`, `examples/*`
+- **Notes:** Reference V1's docs for content, rewrite for V3 architecture.
+
+---
+
+## T11: Integration Tests & CI
+
+- **Objective:** Add cross-module integration tests and harden CI.
+- **Dependencies:** T9
+- **Deliverables:**
+  - `tests/integration/` with CLI end-to-end and cross-module workflow tests
+  - Updated CI workflow
+- **Validation:**
+  - [ ] `pytest tests/ -q` all pass
+  - [ ] CI workflow is green
+  - [ ] `python -m build && pip install dist/*.whl && sva --help` works
+- **Files touched:** `tests/integration/*`, `.github/workflows/ci.yml`
+- **Notes:** Focus on mocked integration tests that don't require external tools.
+
+---
+
+# 6. Update Log
+
+```
+[2026-04-13 14:30] [ALL] [planner] Status changed: All tasks initialized as NOT_STARTED.
+  Summary: Task DAG created with 11 tasks across 6 execution waves.
+  Execution order: T1 → (T2 || T3) → (T4 || T5 || T6 || T7) → T8 → T9 → (T10 || T11)
+```

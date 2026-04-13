@@ -1,0 +1,536 @@
+{
+  "properties": [
+    {
+      "name": "p_gen_0",
+      "sva": "(ack ##[0:2] grant) |-> ($countones(grant) && $countones(ack))",
+      "svad": "Logic: When the acknowledge (ack) signal followed by the grant signal between 0 and 2 cycles later occurs, then in the same cycle, Sys_0 and Sys_1 must hold.\nDefinitions:\n* Sys_0: the count of high bits in the grant signal\n* Sys_1: the count of high bits in the acknowledge (ack) signal\n",
+      "property_block": "property p_gen_0;\n  @(posedge clk) (ack ##[0:2] grant) |-> ($countones(grant) && $countones(ack));\nendproperty"
+    },
+    {
+      "name": "p_gen_1",
+      "sva": "req |=> ((request & (ack ^~ $past(ack, 1))) == ((ack ^~ valid) % (ack - ready)))",
+      "svad": "Logic: When the request (req) signal occurs, then in the next cycle, Calc_0 must hold.\nDefinitions:\n* Calc_0: The result of: ((request & (ack ^~ $past(ack, 1))) == ((ack ^~ valid) % (ack - ready)))\n",
+      "property_block": "property p_gen_1;\n  @(posedge clk) req |=> ((request & (ack ^~ $past(ack, 1))) == ((ack ^~ valid) % (ack - ready)));\nendproperty"
+    },
+    {
+      "name": "p_gen_2",
+      "sva": "((request < ack) until_with req)",
+      "svad": "Logic: (the request signal < the acknowledge (ack) signal) holds until and including the request (req) signal occurs\nDefinitions:\n",
+      "property_block": "property p_gen_2;\n  @(posedge clk) ((request < ack) until_with req);\nendproperty"
+    },
+    {
+      "name": "p_gen_3",
+      "sva": "((grant && $rose(request)) until_with ready)",
+      "svad": "Logic: Exp_1 holds until and including the ready signal occurs\nDefinitions:\n* Sys_0: the request signal rises from low to high\n* Exp_1: the grant signal and Sys_0\n",
+      "property_block": "property p_gen_3;\n  @(posedge clk) ((grant && $rose(request)) until_with ready);\nendproperty"
+    },
+    {
+      "name": "p_gen_4",
+      "sva": "(req ##[1:3] req) |-> req",
+      "svad": "Logic: When the request (req) signal followed by the request (req) signal between 1 and 3 cycles later occurs, then in the same cycle, the request (req) signal must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_4;\n  @(posedge clk) (req ##[1:3] req) |-> req;\nendproperty"
+    },
+    {
+      "name": "p_gen_5",
+      "sva": "ready",
+      "svad": "Logic: the ready signal\nDefinitions:\n",
+      "property_block": "property p_gen_5;\n  @(posedge clk) ready;\nendproperty"
+    },
+    {
+      "name": "p_gen_6",
+      "sva": "valid |-> (ack[->4])",
+      "svad": "Logic: When the valid signal occurs, then in the same cycle, wait for the 4th occurrence of the acknowledge (ack) signal must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_6;\n  @(posedge clk) valid |-> (ack[->4]);\nendproperty"
+    },
+    {
+      "name": "p_gen_7",
+      "sva": "(grant ##2 req) |-> ($past(valid, 2) === (+($isunknown(valid) ? ready : req)))",
+      "svad": "Logic: When the grant signal followed by the request (req) signal 2 cycles later occurs, then in the same cycle, Calc_0 must hold.\nDefinitions:\n* Calc_0: The result of: ($past(valid, 2) === (+($isunknown(valid) ? ready : req)))\n",
+      "property_block": "property p_gen_7;\n  @(posedge clk) (grant ##2 req) |-> ($past(valid, 2) === (+($isunknown(valid) ? ready : req)));\nendproperty"
+    },
+    {
+      "name": "p_gen_8",
+      "sva": "disable iff (valid) ((req ##[0:3] request) |-> request)",
+      "svad": "Scope: This property is active unless the valid signal is asserted.\nLogic: When the request (req) signal followed by the request signal between 0 and 3 cycles later occurs, then in the same cycle, the request signal must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_8;\n  @(posedge clk) disable iff (valid) ((req ##[0:3] request) |-> request);\nendproperty"
+    },
+    {
+      "name": "p_gen_9",
+      "sva": "request |=> grant",
+      "svad": "Logic: When the request signal occurs, then in the next cycle, the grant signal must hold.\nDefinitions:\n",
+      "property_block": "property p_gen_9;\n  @(posedge clk) request |=> grant;\nendproperty"
+    }
+  ],
+  "metadata": {
+    "coverage": {
+      "total_properties": 10,
+      "constructs_total": 48,
+      "constructs_covered": 21,
+      "coverage_pct": 43.75,
+      "missing_constructs": [
+        {
+          "key": " and ",
+          "description": "Property AND"
+        },
+        {
+          "key": " or ",
+          "description": "Property OR"
+        },
+        {
+          "key": "not ",
+          "description": "NOT property"
+        },
+        {
+          "key": "if ",
+          "description": "If-else property"
+        },
+        {
+          "key": "[*",
+          "description": "Consecutive repetition"
+        },
+        {
+          "key": "[=",
+          "description": "Non-consecutive repetition"
+        },
+        {
+          "key": "intersect",
+          "description": "Intersect operator"
+        },
+        {
+          "key": "throughout",
+          "description": "Throughout operator"
+        },
+        {
+          "key": "first_match",
+          "description": "First match"
+        },
+        {
+          "key": ".ended",
+          "description": "Sequence ended"
+        },
+        {
+          "key": "$fell",
+          "description": "Fell function"
+        },
+        {
+          "key": "$stable",
+          "description": "Stable function"
+        },
+        {
+          "key": "$changed",
+          "description": "Changed function"
+        },
+        {
+          "key": "$onehot",
+          "description": "Onehot function"
+        },
+        {
+          "key": "$onehot0",
+          "description": "Onehot0 function"
+        },
+        {
+          "key": "||",
+          "description": "Logical OR"
+        },
+        {
+          "key": "!",
+          "description": "Logical NOT"
+        },
+        {
+          "key": "!=",
+          "description": "Inequality"
+        },
+        {
+          "key": "!==",
+          "description": "Case inequality"
+        },
+        {
+          "key": ">=",
+          "description": "Greater or equal"
+        },
+        {
+          "key": "<=",
+          "description": "Less or equal"
+        },
+        {
+          "key": " + ",
+          "description": "Addition"
+        },
+        {
+          "key": " * ",
+          "description": "Multiplication"
+        },
+        {
+          "key": " / ",
+          "description": "Division"
+        },
+        {
+          "key": " | ",
+          "description": "Bitwise OR"
+        },
+        {
+          "key": " ^ ",
+          "description": "Bitwise XOR"
+        },
+        {
+          "key": "~^",
+          "description": "Bitwise XNOR alt"
+        }
+      ],
+      "categories": {
+        "Property Operators": [
+          {
+            "key": "|->",
+            "description": "Overlapping implication",
+            "properties_with_construct": 5,
+            "occurrences": 5,
+            "coverage_pct": 50.0
+          },
+          {
+            "key": "|=>",
+            "description": "Non-overlapping implication",
+            "properties_with_construct": 2,
+            "occurrences": 2,
+            "coverage_pct": 20.0
+          },
+          {
+            "key": " and ",
+            "description": "Property AND",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": " or ",
+            "description": "Property OR",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "until",
+            "description": "Until operator",
+            "properties_with_construct": 2,
+            "occurrences": 2,
+            "coverage_pct": 20.0
+          },
+          {
+            "key": "until_with",
+            "description": "Until with operator",
+            "properties_with_construct": 2,
+            "occurrences": 2,
+            "coverage_pct": 20.0
+          },
+          {
+            "key": "not ",
+            "description": "NOT property",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "disable iff",
+            "description": "Disable iff",
+            "properties_with_construct": 1,
+            "occurrences": 1,
+            "coverage_pct": 10.0
+          },
+          {
+            "key": "if ",
+            "description": "If-else property",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          }
+        ],
+        "Sequence Operators": [
+          {
+            "key": "##",
+            "description": "Delay operator",
+            "properties_with_construct": 4,
+            "occurrences": 4,
+            "coverage_pct": 40.0
+          },
+          {
+            "key": "[*",
+            "description": "Consecutive repetition",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "[=",
+            "description": "Non-consecutive repetition",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "[->",
+            "description": "Goto repetition",
+            "properties_with_construct": 1,
+            "occurrences": 1,
+            "coverage_pct": 10.0
+          },
+          {
+            "key": "intersect",
+            "description": "Intersect operator",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "throughout",
+            "description": "Throughout operator",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "first_match",
+            "description": "First match",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": ".ended",
+            "description": "Sequence ended",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          }
+        ],
+        "System Functions": [
+          {
+            "key": "$rose",
+            "description": "Rose function",
+            "properties_with_construct": 1,
+            "occurrences": 1,
+            "coverage_pct": 10.0
+          },
+          {
+            "key": "$fell",
+            "description": "Fell function",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "$stable",
+            "description": "Stable function",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "$changed",
+            "description": "Changed function",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "$past",
+            "description": "Past function",
+            "properties_with_construct": 2,
+            "occurrences": 2,
+            "coverage_pct": 20.0
+          },
+          {
+            "key": "$onehot",
+            "description": "Onehot function",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "$onehot0",
+            "description": "Onehot0 function",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "$isunknown",
+            "description": "Is unknown function",
+            "properties_with_construct": 1,
+            "occurrences": 1,
+            "coverage_pct": 10.0
+          },
+          {
+            "key": "$countones",
+            "description": "Count ones function",
+            "properties_with_construct": 1,
+            "occurrences": 2,
+            "coverage_pct": 10.0
+          }
+        ],
+        "Boolean Operators": [
+          {
+            "key": "&&",
+            "description": "Logical AND",
+            "properties_with_construct": 2,
+            "occurrences": 2,
+            "coverage_pct": 20.0
+          },
+          {
+            "key": "||",
+            "description": "Logical OR",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "!",
+            "description": "Logical NOT",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          }
+        ],
+        "Comparison Operators": [
+          {
+            "key": "==",
+            "description": "Equality",
+            "properties_with_construct": 2,
+            "occurrences": 2,
+            "coverage_pct": 20.0
+          },
+          {
+            "key": "!=",
+            "description": "Inequality",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "===",
+            "description": "Case equality",
+            "properties_with_construct": 1,
+            "occurrences": 1,
+            "coverage_pct": 10.0
+          },
+          {
+            "key": "!==",
+            "description": "Case inequality",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": ">",
+            "description": "Greater than",
+            "properties_with_construct": 7,
+            "occurrences": 8,
+            "coverage_pct": 70.0
+          },
+          {
+            "key": "<",
+            "description": "Less than",
+            "properties_with_construct": 1,
+            "occurrences": 1,
+            "coverage_pct": 10.0
+          },
+          {
+            "key": ">=",
+            "description": "Greater or equal",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "<=",
+            "description": "Less or equal",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          }
+        ],
+        "Arithmetic Operators": [
+          {
+            "key": " + ",
+            "description": "Addition",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": " - ",
+            "description": "Subtraction",
+            "properties_with_construct": 1,
+            "occurrences": 1,
+            "coverage_pct": 10.0
+          },
+          {
+            "key": " * ",
+            "description": "Multiplication",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": " / ",
+            "description": "Division",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": " % ",
+            "description": "Modulo",
+            "properties_with_construct": 1,
+            "occurrences": 1,
+            "coverage_pct": 10.0
+          }
+        ],
+        "Bitwise Operators": [
+          {
+            "key": " & ",
+            "description": "Bitwise AND",
+            "properties_with_construct": 1,
+            "occurrences": 1,
+            "coverage_pct": 10.0
+          },
+          {
+            "key": " | ",
+            "description": "Bitwise OR",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": " ^ ",
+            "description": "Bitwise XOR",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "^~",
+            "description": "Bitwise XNOR",
+            "properties_with_construct": 1,
+            "occurrences": 2,
+            "coverage_pct": 10.0
+          },
+          {
+            "key": "~^",
+            "description": "Bitwise XNOR alt",
+            "properties_with_construct": 0,
+            "occurrences": 0,
+            "coverage_pct": 0.0
+          },
+          {
+            "key": "~",
+            "description": "Bitwise NOT",
+            "properties_with_construct": 1,
+            "occurrences": 2,
+            "coverage_pct": 10.0
+          }
+        ]
+      }
+    },
+    "valid_count": 10,
+    "invalid_count": 0
+  }
+}

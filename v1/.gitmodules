@@ -1,0 +1,3 @@
+[submodule "3rd_party/LTLTrans"]
+	path = 3rd_party/LTLTrans
+	url = https://github.com/andrewhead/LTLTrans.git
