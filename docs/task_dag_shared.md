@@ -81,7 +81,7 @@ graph TD
 | T6 | Codex | DONE | 100 | 2026-04-13 16:08 CST | — | T6 complete; T9 may consume `generate/` once T4, T5, T7, and T8 are also complete |
 | T7 | Codex | DONE | 100 | 2026-04-13 15:48 CST | — | T7 complete; T8 may proceed once T4 is done, and T9 may proceed after T4-T8 complete |
 | T8 | Codex | DONE | 100 | 2026-04-13 16:11 CST | — | T8 complete; T9 may proceed against the ported `data/` workflows |
-| T9 | — | NOT_STARTED | 0 | 2026-04-13 | T4–T8 | Build unified CLI |
+| T9 | Codex | DONE | 100 | 2026-04-13 16:27 CST | — | Unified CLI wired and validated; T10 and T11 may proceed |
 | T10 | — | NOT_STARTED | 0 | 2026-04-13 | T9 | Write documentation |
 | T11 | — | NOT_STARTED | 0 | 2026-04-13 | T9 | Add integration tests |
 
@@ -330,4 +330,8 @@ graph TD
   Summary: Ported the V1 dataset builder and benchmark runner into `v3/sva-toolkit/src/sva_toolkit/data/` as thin V3 adapters over `runtime.llm.LLMClient`, `describe.SVACoTBuilder`, `describe.SVADTranslator`, and `formal.FormalService`. Preserved progress-cache behavior with top-level worker functions for multiprocessing, added offline dataset mode that skips SVAD when no LLM is configured, kept translator fallback for failed LLM description generation, and added focused mocked tests for dataset output structure, cache reuse, benchmark relationship classification, and aggregated metrics.
   Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/data/{__init__.py,dataset.py,benchmark.py}`, `v3/sva-toolkit/tests/data/{test_dataset.py,test_benchmark.py}`
   Validation: `pytest tests/data/ -q` → `11 passed`; `ruff check src/sva_toolkit/data/` → `All checks passed!`
+[2026-04-13 16:27 CST] [T9] [Codex] Status changed: DONE.
+  Summary: Added the unified V3 `sva` CLI in `src/sva_toolkit/cli/main.py` with lazy-imported `parse`, `formal`, `timing`, `generate`, `describe`, and `data` commands, plus consistent file-or-inline input handling, JSON/text formatting helpers, dataset JSONL output, and friendly Click error wrapping. Added CLI smoke tests covering top-level help, all required subcommand help surfaces, and representative parse/formal/timing/generate/describe/data behaviors. Verified the existing `pyproject.toml` entry point already matches the required `sva = "sva_toolkit.cli.main:main"` script and left it unchanged.
+  Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/cli/main.py`, `v3/sva-toolkit/src/sva_toolkit/cli/__init__.py`, `v3/sva-toolkit/tests/cli/test_main.py`
+  Validation: `pytest tests/cli -q` → `32 passed`; `ruff check src/sva_toolkit/cli/` → `All checks passed!`; `PYTHONPATH=src python -m sva_toolkit.cli.main --help` showed the expected `parse`, `formal`, `timing`, `generate`, `describe`, and `data` commands.
 ```
