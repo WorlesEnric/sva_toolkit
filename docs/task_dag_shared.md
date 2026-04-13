@@ -74,7 +74,7 @@ graph TD
 | Task ID | Owner / Worker | Status | Progress % | Last Update | Blockers | Next Action |
 |---------|---------------|--------|------------|-------------|----------|-------------|
 | T1 | Codex | DONE | 100 | 2026-04-13 15:23 CST | — | T2 and T3 may begin from the V3 scaffold |
-| T2 | — | NOT_STARTED | 0 | 2026-04-13 | T1 | Port runtime module |
+| T2 | Codex | DONE | 100 | 2026-04-13 15:32 CST | — | Runtime module ported and validated |
 | T3 | — | NOT_STARTED | 0 | 2026-04-13 | T1 | Port SVA parser |
 | T4 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port formal module |
 | T5 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port timing module |
@@ -293,4 +293,8 @@ graph TD
   Summary: Created `v3/sva-toolkit/` project scaffold with package/test directory skeleton, packaging metadata, CI workflow, Makefile, `.gitignore`, and placeholder README.
   Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/pyproject.toml`, `v3/sva-toolkit/Makefile`, `v3/sva-toolkit/.gitignore`, `v3/sva-toolkit/README.md`, `v3/sva-toolkit/.github/workflows/ci.yml`, `v3/sva-toolkit/src/sva_toolkit/**/__init__.py`, `v3/sva-toolkit/tests/**/__init__.py`, `v3/sva-toolkit/tests/test_version.py`
   Validation: `python -m pip install -e '.[dev]'`, `ruff check src/`, `pytest`, and `python -m build` all succeeded. Added `tests/test_version.py` so plain `pytest` exits cleanly instead of returning code 5 for an empty suite.
+[2026-04-13 15:32 CST] [T2] [Codex] Status changed: DONE.
+  Summary: Ported the V2 runtime module into `v3/sva-toolkit/src/sva_toolkit/runtime/` and added a new `runtime/llm.py` from V1 with lazy `openai` import, env-backed API key config, and explicit optional-dependency error handling.
+  Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/runtime/__init__.py`, `v3/sva-toolkit/src/sva_toolkit/runtime/config.py`, `v3/sva-toolkit/src/sva_toolkit/runtime/tools.py`, `v3/sva-toolkit/src/sva_toolkit/runtime/process.py`, `v3/sva-toolkit/src/sva_toolkit/runtime/llm.py`, `v3/sva-toolkit/tests/runtime/test_config.py`, `v3/sva-toolkit/tests/runtime/test_tools.py`, `v3/sva-toolkit/tests/runtime/test_process.py`, `v3/sva-toolkit/tests/runtime/test_runtime_imports.py`, `v3/sva-toolkit/tests/runtime/test_llm.py`
+  Validation: `pytest tests/runtime/ -q` passed (`16 passed`), and `ruff check src/sva_toolkit/runtime/` passed.
 ```
