@@ -77,7 +77,7 @@ graph TD
 | T2 | Codex | DONE | 100 | 2026-04-13 15:32 CST | — | Runtime module ported and validated |
 | T3 | Codex | DONE | 100 | 2026-04-13 15:35 CST | — | T3 complete; T4, T5, T6, and T7 may proceed against the ported SVA module |
 | T4 | Codex | DONE | 100 | 2026-04-13 15:45 CST | — | T4 complete; T8 and T9 may proceed against the ported formal module |
-| T5 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port timing module |
+| T5 | Codex | DONE | 100 | 2026-04-13 15:45 CST | — | Timing module ported and validated; T9 may consume T5 once T6/T7/T8 are complete |
 | T6 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port generator module |
 | T7 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port describe module |
 | T8 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T4, T7 | Port data workflows |
@@ -308,4 +308,11 @@ graph TD
   Summary: Ported the full V2 formal verification module into `v3/sva-toolkit/src/sva_toolkit/formal/`, preserved the V2 model/parse/normalize behavior, adapted `FormalService` to use V3 `ToolRegistry` discovery, and kept backend subprocess execution on `runtime.process.run_tool`. Added the V2 formal tests plus V3-specific service/backend tests that mock EBMC and VC Formal execution.
   Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/formal/{__init__.py,model.py,parse.py,normalize.py,service.py}`, `v3/sva-toolkit/src/sva_toolkit/formal/backends/{__init__.py,ebmc.py,vcformal.py}`, `v3/sva-toolkit/tests/formal/{test_model.py,test_parse.py,test_service.py}`, `v3/sva-toolkit/tests/formal/backends/{test_ebmc.py,test_vcformal.py}`
   Validation: `env PYTHONPATH=src python -m pytest -q tests/formal` → `26 passed`; `python -m ruff check src/sva_toolkit/formal/` → clean.
+[2026-04-13 15:41 CST] [T5] [Codex] Status changed: IN_PROGRESS.
+  Summary: Confirmed T2 and T3 are DONE, claimed T5, and started a direct V2→V3 timing port. Initial scope check found the V3 timing tree is mostly empty and that V2 timing bridge code depends on `sva_toolkit.formal.model.FormalProperty`, which is not present in V3 yet.
+  Planned validation: `pytest tests/timing/ -q` and `ruff check src/sva_toolkit/timing/`, with optional render-dependency coverage handled via `pytest.importorskip`.
+[2026-04-13 15:45 CST] [T5] [Codex] Status changed: DONE.
+  Summary: Ported the full V2 timing module and all V2 timing tests into V3, keeping the port direct and merge-friendly. Applied only targeted V3 compatibility changes: added minimal `formal/model.py` and `formal/parse.py` shims required by the timing bridge before T4 lands, switched PNG/WaveDrom renderers to lazy optional-dependency imports, standardized the requested install hint, and fixed timing-only lint issues from the raw V2 port.
+  Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/timing/{__init__.py,errors.py}`, `v3/sva-toolkit/src/sva_toolkit/timing/core/{__init__.py,scenario.py,conditions.py,graph.py}`, `v3/sva-toolkit/src/sva_toolkit/timing/frontend/{__init__.py,parser.py,validate.py}`, `v3/sva-toolkit/src/sva_toolkit/timing/bridge/{__init__.py,emit_sva.py,from_sva.py,to_dsl.py,solver.py,ebmc_witness.py}`, `v3/sva-toolkit/src/sva_toolkit/timing/projection/{__init__.py,scenario_view.py,wavedrom_view.py}`, `v3/sva-toolkit/src/sva_toolkit/timing/render/{__init__.py,svg.py,png.py,wavedrom.py,waveform.py}`, `v3/sva-toolkit/src/sva_toolkit/formal/{model.py,parse.py}`, `v3/sva-toolkit/tests/timing/{__init__.py,test_ast_bridge.py,test_conditions.py,test_dag_synthesis.py,test_ebmc_witness.py,test_parser.py,test_render_png.py,test_render_svg.py,test_sva_roundtrip.py}`, `v3/sva-toolkit/tests/timing/{bridge,core,frontend,projection,render}/__init__.py`
+  Validation: `pytest tests/timing/ -q` → `75 passed, 1 skipped`; `ruff check src/sva_toolkit/timing/` → clean. The skipped test is the `cairosvg`-gated PNG render test, using `pytest.importorskip` as required.
 ```
