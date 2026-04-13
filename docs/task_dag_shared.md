@@ -73,7 +73,7 @@ graph TD
 
 | Task ID | Owner / Worker | Status | Progress % | Last Update | Blockers | Next Action |
 |---------|---------------|--------|------------|-------------|----------|-------------|
-| T1 | — | NOT_STARTED | 0 | 2026-04-13 | — | Create v3/sva-toolkit/ scaffold |
+| T1 | Codex | DONE | 100 | 2026-04-13 15:23 CST | — | T2 and T3 may begin from the V3 scaffold |
 | T2 | — | NOT_STARTED | 0 | 2026-04-13 | T1 | Port runtime module |
 | T3 | — | NOT_STARTED | 0 | 2026-04-13 | T1 | Port SVA parser |
 | T4 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port formal module |
@@ -289,4 +289,8 @@ graph TD
 [2026-04-13 14:30] [ALL] [planner] Status changed: All tasks initialized as NOT_STARTED.
   Summary: Task DAG created with 11 tasks across 6 execution waves.
   Execution order: T1 → (T2 || T3) → (T4 || T5 || T6 || T7) → T8 → T9 → (T10 || T11)
+[2026-04-13 15:23 CST] [T1] [Codex] Status changed: DONE.
+  Summary: Created `v3/sva-toolkit/` project scaffold with package/test directory skeleton, packaging metadata, CI workflow, Makefile, `.gitignore`, and placeholder README.
+  Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/pyproject.toml`, `v3/sva-toolkit/Makefile`, `v3/sva-toolkit/.gitignore`, `v3/sva-toolkit/README.md`, `v3/sva-toolkit/.github/workflows/ci.yml`, `v3/sva-toolkit/src/sva_toolkit/**/__init__.py`, `v3/sva-toolkit/tests/**/__init__.py`, `v3/sva-toolkit/tests/test_version.py`
+  Validation: `python -m pip install -e '.[dev]'`, `ruff check src/`, `pytest`, and `python -m build` all succeeded. Added `tests/test_version.py` so plain `pytest` exits cleanly instead of returning code 5 for an empty suite.
 ```
