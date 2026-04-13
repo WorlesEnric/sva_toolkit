@@ -79,7 +79,7 @@ graph TD
 | T4 | Codex | DONE | 100 | 2026-04-13 15:45 CST | — | T4 complete; T8 and T9 may proceed against the ported formal module |
 | T5 | Codex | DONE | 100 | 2026-04-13 15:45 CST | — | Timing module ported and validated; T9 may consume T5 once T6/T7/T8 are complete |
 | T6 | Codex | DONE | 100 | 2026-04-13 16:08 CST | — | T6 complete; T9 may consume `generate/` once T4, T5, T7, and T8 are also complete |
-| T7 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T3 | Port describe module |
+| T7 | Codex | DONE | 100 | 2026-04-13 15:48 CST | — | T7 complete; T8 may proceed once T4 is done, and T9 may proceed after T4-T8 complete |
 | T8 | — | NOT_STARTED | 0 | 2026-04-13 | T2, T4, T7 | Port data workflows |
 | T9 | — | NOT_STARTED | 0 | 2026-04-13 | T4–T8 | Build unified CLI |
 | T10 | — | NOT_STARTED | 0 | 2026-04-13 | T9 | Write documentation |
@@ -319,4 +319,11 @@ graph TD
   Summary: Ported the V1 SVA generator into `v3/sva-toolkit/src/sva_toolkit/generate/` as the V3 `generate/` package, renamed the main entry point to `synthesizer.py`/`SVASynthesizer`, preserved the NL IR submodule, swapped Verible lookup/execution to `runtime.tools.ToolRegistry` + `runtime.process.run_tool`, replaced the giant expanded signal pool with curated `signal_presets.py`, and added focused V3 tests for batch generation, coverage stats, runtime-backed validation, and NL rendering.
   Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/generate/{__init__.py,synthesizer.py,types.py,coverage.py,templates.py,utils.py,stratified.py,signal_presets.py,arith_weight.json}`, `v3/sva-toolkit/src/sva_toolkit/generate/nl/{__init__.py,ir.py,extractor.py,realizer.py,symbolic.py,templates.py}`, `v3/sva-toolkit/scripts/expand_signal_pool.py`, `v3/sva-toolkit/tests/generate/{test_synthesizer.py,test_presets_and_nl.py}`
   Validation: `pytest tests/generate -q` → `5 passed, 1 skipped`; `ruff check src/sva_toolkit/generate/` → clean; `PYTHONPATH=src python -c '...'` smoke check confirmed `SVASynthesizer.generate_module(..., 3)` produces 3 properties and `compute_coverage_statistics(...)` reports `total_properties == 3`. The Verible integration test is present and auto-skips when `verible-verilog-syntax` is not installed.
+[2026-04-13 16:08 CST] [T7] [Codex] Status changed: IN_PROGRESS.
+  Summary: Confirmed T2 and T3 are DONE, claimed T7, and began mapping V1's SVAD translator and CoT builder onto the V3 `sva` parser/emitter. The planned approach is a thin describe-local compatibility layer that extracts V1-style structure from `PropertySpec` while preserving the existing template logic.
+  Planned validation: `pytest tests/describe/ -q`, `ruff check src/sva_toolkit/describe/`, and targeted sample translations/CoT output checks.
+[2026-04-13 15:48 CST] [T7] [Codex] Status changed: DONE.
+  Summary: Ported V1's template-based SVAD translator and CoT builder into `v3/sva-toolkit/src/sva_toolkit/describe/`, replacing the Verible-backed `ast_parser` dependency with a describe-local compatibility parser over `sva_toolkit.sva`. The port preserves the V1 translation/CoT templates, accepts raw SVA strings directly, exports a structured `CoTSection` API, and adds describe tests covering translator output plus CoT markdown/section behavior.
+  Touched files: `docs/task_dag_shared.md`, `v3/sva-toolkit/src/sva_toolkit/describe/{__init__.py,translator.py,cot.py}`, `v3/sva-toolkit/tests/describe/{test_translator.py,test_cot.py}`
+  Validation: `pytest tests/describe/ -q` → `4 passed`; `ruff check src/sva_toolkit/describe/` → `All checks passed!`; targeted sample run via `PYTHONPATH=src python - <<'PY' ...` produced readable SVAD output with signal/reset sections and structured CoT output with five reasoning steps.
 ```
