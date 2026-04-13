@@ -1,0 +1,7 @@
+[
+  {
+    "id": "req_ack_next_cycle",
+    "SVAD": "Whenever req is asserted, ack must be asserted on the next rising edge of clk unless reset disables the property.",
+    "SVA": "assert property (@(posedge clk) disable iff (!rst_n) req |-> ##1 ack);"
+  }
+]

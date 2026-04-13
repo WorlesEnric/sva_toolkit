@@ -1,0 +1,10 @@
+[
+  {
+    "id": "req_ack_next_cycle",
+    "SVA": "assert property (@(posedge clk) disable iff (!rst_n) req |-> ##1 ack);"
+  },
+  {
+    "id": "grant_after_request",
+    "SVA": "assert property (@(posedge clk) req |=> ##[1:2] gnt);"
+  }
+]
