@@ -1,2 +1,0 @@
-[console_scripts]
-sva = sva_toolkit.cli.main:main
