@@ -1,0 +1,385 @@
+# SVA Toolkit V3 — Shared Worker Collaboration Document
+
+This document is the **single source of truth** for coding workers
+executing the gap-remediation plan described in `docs/task_dag_planning.md`.
+Workers collaborate across separate conversations and isolated git
+worktrees; this file is the only persistent coordination channel.
+
+> Human planning context lives in `docs/task_dag_planning.md`. This file
+> is operational — edit it every time you start, pause, or finish a task.
+
+---
+
+## 1. Worker instructions
+
+Read this section before doing any work.
+
+1. **Always read this document first.** Before opening any scaffolded
+   source file, load this file and locate your task in §4 (status table)
+   and §5 (task detail cards).
+2. **Claim one unblocked task.** A task is unblocked iff every task in
+   its `Depends on` column is `DONE`. Do **not** pick up a task that is
+   already `IN_PROGRESS` by another worker.
+3. **Update status before starting.** Flip the task to `IN_PROGRESS`
+   in the table in §4 and put your worker handle in the `Owner / worker`
+   column.
+4. **Work within scope.** Only modify the files listed in your task's
+   "Primary areas touched" / "Files likely touched" section. If you
+   must touch something else, record the reason in §6 (update log)
+   before editing.
+5. **Do not silently change task scope.** If requirements shift,
+   update the task detail card in §5 and note it in §6.
+6. **Record blockers explicitly.** If a dependency is broken or a
+   scaffolded file contains something unexpected, set status to
+   `BLOCKED`, fill in the `Blockers` column, and add a §6 entry.
+7. **Do not edit unrelated tasks.** The status table and the detail
+   cards for tasks you do not own are read-only to you, except to mark
+   a dependency you delivered (see §4 rules).
+8. **Surface partial work.** If you stop before completion, set status
+   to `REVIEW_NEEDED` or keep `IN_PROGRESS` and fill in `Next action`
+   with concrete, runnable next steps for the next worker. Never leave
+   the table stale.
+9. **Preserve the DAG.** Do not remove or reorder tasks. If a task must
+   be split, append a new row (e.g. `T07a`, `T07b`) and note the split
+   in §6.
+10. **Always append to the log.** Every status change in §4 must have a
+    matching dated entry in §6.
+
+Allowed status values: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`,
+`REVIEW_NEEDED`, `DONE`.
+
+When you finish a task:
+
+- Run `pytest -q` for the tests your task owns.
+- Run `ruff check src tests` on the files you touched.
+- Flip your task to `DONE` in §4, update `Last update` with today's
+  date (YYYY-MM-DD), set `Progress %` to 100, and clear `Blockers`.
+- Append a completion entry to §6.
+
+---
+
+## 2. Task DAG diagram
+
+```mermaid
+flowchart TD
+  T01[T01 Lexer trivia]
+  T02[T02 Atomic I/O + diagnostics]
+  T03[T03 Process hardening]
+  T04[T04 Seedable RNG]
+  T05[T05 Template sanitization]
+  T06[T06 Keyword + AST]
+  T07[T07 Parser + emitter]
+  T08[T08 Clock/reset mandatory]
+  T09[T09 Describe NL templates]
+  T10[T10 Timing grammar]
+  T11[T11 Extraction status surface]
+  T12[T12 Data cache + LLM retry]
+  T13[T13 CLI exit codes]
+  T14[T14 Regression tests]
+  T15[T15 LIMITATIONS + SUPPORTED]
+
+  T01 --> T06 --> T07
+  T07 --> T09
+  T07 --> T13
+  T02 --> T12
+  T02 --> T11
+  T02 --> T13
+  T03 --> T13
+  T04 --> T14
+  T05 --> T08 --> T13
+  T10 --> T14
+  T11 --> T13
+  T12 --> T13
+  T13 --> T14 --> T15
+  T13 --> T15
+```
+
+---
+
+## 3. Task dependency table
+
+| Task ID | Task name                              | Depends on     | Blocks                       | Parallelizable with           | Primary areas touched                                             |
+| ------- | -------------------------------------- | -------------- | ---------------------------- | ----------------------------- | ----------------------------------------------------------------- |
+| T01     | Lexer trivia & preprocessor            | —              | T06, T07                     | T02, T03, T04, T05            | `src/sva_toolkit/sva/lexer.py`, `sva/trivia.py` (new), `sva/preprocessor.py` (new), `tests/sva/` |
+| T02     | Atomic I/O + diagnostics               | —              | T11, T12, T13                | T01, T03, T04, T05            | `src/sva_toolkit/runtime/atomic_io.py` (new), `runtime/diagnostics.py` (new), `tests/runtime/` |
+| T03     | Process hardening                      | —              | T13                          | T01, T02, T04, T05            | `src/sva_toolkit/runtime/process.py`, `runtime/errors.py` (new), `tests/runtime/` |
+| T04     | Seedable RNG                           | —              | T14                          | T01, T02, T03, T05            | `src/sva_toolkit/generate/rng.py` (new), `generate/synthesizer.py`, `generate/stratified.py`, `generate/utils.py`, `cli/generate_flags.py` (new) |
+| T05     | EBMC/VCF template sanitization         | —              | T08                          | T01, T02, T03, T04            | `src/sva_toolkit/formal/sanitize.py` (new), `formal/backends/ebmc.py`, `formal/backends/vcformal.py` |
+| T06     | Lexer keyword expansion + AST          | T01            | T07                          | T02, T03, T04, T05 (after T01) | `src/sva_toolkit/sva/lexer.py`, `sva/ast.py`                       |
+| T07     | Parser + emitter expansion             | T06            | T09, T13                     | T02, T03, T04, T05, T10, T11  | `src/sva_toolkit/sva/parser.py`, `sva/emitter.py`, `sva/diagnostics.py` (new), `sva/transforms.py`, `sva/visitors.py` |
+| T08     | Mandatory clock/reset                  | T05, T07       | T13                          | T09, T10, T11, T12            | `src/sva_toolkit/formal/parse.py`, `formal/model.py`, `formal/service.py`, `cli/formal_flags.py` (new) |
+| T09     | Describe NL templates + uncertainty    | T07            | T13 (indirect)               | T08, T10, T11, T12            | `src/sva_toolkit/describe/translator.py`, `describe/cot.py`        |
+| T10     | Timing DSL grammar parser              | —              | T14                          | T01–T09, T11, T12             | `src/sva_toolkit/timing/frontend/parser.py`, `timing/frontend/grammar.py` (new), `timing/frontend/validate.py` |
+| T11     | Timing extraction status surface       | T02            | T13                          | T07, T08, T09, T10, T12       | `src/sva_toolkit/timing/bridge/from_sva.py`, `timing/bridge/status.py` (new) |
+| T12     | Data cache + LLM retry                 | T02            | T13                          | T07, T08, T09, T10, T11       | `src/sva_toolkit/data/dataset.py`, `data/benchmark.py`, `runtime/llm.py`, `runtime/retry.py` (new) |
+| T13     | CLI error + exit codes                 | T02, T03, T07, T08, T11, T12 | T14, T15      | —                             | `src/sva_toolkit/cli/main.py`, `cli/exit_codes.py` (new)           |
+| T14     | Regression & integration tests         | T01–T13        | T15                          | T15                           | `tests/integration/`, `tests/fixtures/sva_corpus/` (new), `pyproject.toml` (dev extra) |
+| T15     | `LIMITATIONS.md` + `SUPPORTED_FEATURES.md` | T01–T14    | —                            | T14                           | `docs/LIMITATIONS.md` (new), `docs/SUPPORTED_FEATURES.md` (new)    |
+
+---
+
+## 4. Task status table
+
+| Task ID | Owner / worker | Status      | Progress % | Last update | Blockers | Next action                                                                 |
+| ------- | -------------- | ----------- | ---------- | ----------- | -------- | --------------------------------------------------------------------------- |
+| T01     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, land trivia + preprocessor handling for `sva/lexer.py`               |
+| T02     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, land `runtime/atomic_io.py` and `runtime/diagnostics.py`             |
+| T03     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, harden `runtime/process.py` (setsid, killpg, typed errors)           |
+| T04     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, thread `GenerationRng` through `generate/`                           |
+| T05     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, add `formal/sanitize.py` and migrate backends to use it              |
+| T06     | —              | NOT_STARTED | 0          | 2026-04-19  | T01      | Wait for T01 DONE, then expand lexer keyword set and AST dataclasses        |
+| T07     | —              | NOT_STARTED | 0          | 2026-04-19  | T06      | Wait for T06 DONE, then expand parser/emitter and surface opaque downgrades |
+| T08     | —              | NOT_STARTED | 0          | 2026-04-19  | T05, T07 | Wait for T05 and T07 DONE, then remove hard-coded clock/reset defaults      |
+| T09     | —              | NOT_STARTED | 0          | 2026-04-19  | T07      | Wait for T07 DONE, then fill NL templates and add uncertainty markers       |
+| T10     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, replace regex DSL parser with grammar-based parser                   |
+| T11     | —              | NOT_STARTED | 0          | 2026-04-19  | T02      | Wait for T02 DONE, then build `ExtractionReport`                            |
+| T12     | —              | NOT_STARTED | 0          | 2026-04-19  | T02      | Wait for T02 DONE, then guard cache and add LLM retry                       |
+| T13     | —              | NOT_STARTED | 0          | 2026-04-19  | T02, T03, T07, T08, T11, T12 | Wait for prerequisites, then compose CLI with exit codes     |
+| T14     | —              | NOT_STARTED | 0          | 2026-04-19  | T01–T13  | Wait for integration landing, then build adversarial + regression suite     |
+| T15     | —              | NOT_STARTED | 0          | 2026-04-19  | T01–T14  | Wait for all fixes, then author `LIMITATIONS.md` and `SUPPORTED_FEATURES.md`|
+
+---
+
+## 5. Task detail cards
+
+### T01 — Lexer trivia & preprocessor
+
+- **Objective:** Make the lexer tolerant to `//`, `/* */`, string
+  literals, backtick directives, escaped identifiers, line
+  continuations, and attribute instances.
+- **Dependency prerequisites:** none.
+- **Expected deliverables:** trivia & preprocessor modules, `STRING`
+  token kind, new lexer unit tests, no regressions in existing tests.
+- **Validation checklist:**
+  - [ ] Every `examples/sva/*.sv` tokenizes after the file is prefixed
+        with `// hdr` and an inline `/* block */`.
+  - [ ] `` `define WIDTH 8`` accepted by the preprocessor layer.
+  - [ ] Unterminated string raises `SvaSyntaxError`.
+  - [ ] `ruff check src/sva_toolkit/sva tests/sva` clean.
+- **Files likely touched:** `sva/lexer.py`, `sva/trivia.py` (new),
+  `sva/preprocessor.py` (new), `tests/sva/test_lexer_trivia.py` (new),
+  `tests/sva/test_lexer_preprocessor.py` (new).
+- **Notes for future workers:** Do not add keyword tokens; that is T06.
+
+### T02 — Atomic I/O + diagnostics
+
+- **Objective:** Centralize atomic writes and diagnostic surfacing.
+- **Dependency prerequisites:** none.
+- **Expected deliverables:** `atomic_write_text/json/jsonl`,
+  `Diagnostics` collector, `configure_cli_logging`, unit tests.
+- **Validation checklist:**
+  - [ ] Atomic write simulated failure leaves target unchanged.
+  - [ ] Concurrent writes produce one coherent file.
+  - [ ] Diagnostics aggregator renders a deterministic summary.
+- **Files likely touched:** `runtime/atomic_io.py` (new),
+  `runtime/diagnostics.py` (new), `runtime/__init__.py`,
+  `tests/runtime/test_atomic_io.py` (new),
+  `tests/runtime/test_diagnostics.py` (new).
+- **Notes:** No call-site migration here; T08/T11/T12/T13 adopt these.
+
+### T03 — Process hardening
+
+- **Objective:** Kill process groups on timeout; typed `ToolMissingError`.
+- **Dependency prerequisites:** none.
+- **Expected deliverables:** updated `run_tool`, `errors.py`,
+  regression tests including an orphan-reaping test on POSIX.
+- **Validation checklist:**
+  - [ ] Grandchild is reaped when `run_tool` times out.
+  - [ ] `ToolMissingError` raised for absent binary.
+  - [ ] `make_work_dir` mode is `0o700` on POSIX.
+- **Files likely touched:** `runtime/process.py`, `runtime/errors.py`
+  (new), `tests/runtime/test_process.py`,
+  `tests/runtime/test_process_orphans.py` (new).
+- **Notes:** Document Windows orphan-kill caveat for T15.
+
+### T04 — Seedable RNG
+
+- **Objective:** Eliminate non-determinism in `generate/`.
+- **Dependency prerequisites:** none.
+- **Expected deliverables:** `GenerationRng`, all generators
+  parameterized, `--seed` CLI flag helper.
+- **Validation checklist:**
+  - [ ] Two runs with the same seed produce byte-equal output.
+  - [ ] No `random.<x>` module-level calls in `generate/`.
+  - [ ] Seed echoed to stderr when omitted.
+- **Files likely touched:** `generate/rng.py` (new),
+  `generate/synthesizer.py`, `generate/stratified.py`,
+  `generate/utils.py`, `cli/generate_flags.py` (new),
+  `tests/generate/test_determinism.py` (new).
+- **Notes:** T13 will mount the flag registration module.
+
+### T05 — Template sanitization
+
+- **Objective:** Validate identifiers and escape bodies before splicing
+  into EBMC / VC Formal module templates.
+- **Dependency prerequisites:** none.
+- **Expected deliverables:** `formal/sanitize.py`, migrated backends,
+  unit tests.
+- **Validation checklist:**
+  - [ ] Reserved-word signal is rejected.
+  - [ ] Hierarchical identifier is rejected.
+  - [ ] Body containing `{`/`}` does not crash template rendering.
+- **Files likely touched:** `formal/sanitize.py` (new),
+  `formal/backends/ebmc.py`, `formal/backends/vcformal.py`,
+  `tests/formal/test_sanitize.py` (new).
+- **Notes:** Keep the public backend API surface unchanged.
+
+### T06 — Lexer keyword expansion + AST nodes
+
+- **Objective:** Recognize every missing SVA keyword and carve AST
+  placeholders.
+- **Dependency prerequisites:** T01.
+- **Expected deliverables:** expanded `_KEYWORDS`, new `TokenKind`
+  values, placeholder AST dataclasses, parametrized lexer tests.
+- **Validation checklist:**
+  - [ ] Every new keyword has a lexer test.
+  - [ ] Existing parser tests remain green (no parser changes yet).
+- **Files likely touched:** `sva/lexer.py`, `sva/ast.py`,
+  `tests/sva/test_lexer_*.py`.
+- **Notes:** Parser behavior intentionally unchanged — T07 owns that.
+
+### T07 — Parser + emitter expansion
+
+- **Objective:** Full grammar coverage for the constructs in §2.1–§2.8
+  and visible opaque-downgrade diagnostics.
+- **Dependency prerequisites:** T06.
+- **Expected deliverables:** parser extensions, emitter round-trip
+  support, `sva/diagnostics.py`, extensive new tests.
+- **Validation checklist:**
+  - [ ] Every new construct round-trips via parse + emit.
+  - [ ] `opaque_count == 0` over `examples/sva/`.
+  - [ ] Opaque fallback logs WARNING and bumps counter.
+- **Files likely touched:** `sva/parser.py`, `sva/emitter.py`,
+  `sva/diagnostics.py` (new), `sva/transforms.py`, `sva/visitors.py`,
+  `tests/sva/test_parser_temporal.py` (new),
+  `tests/sva/test_parser_structural.py` (new),
+  `tests/sva/test_opaque_diagnostics.py` (new).
+- **Notes:** If scope grows, split into T07a (temporal) / T07b
+  (structural) and note in §6.
+
+### T08 — Mandatory clock/reset
+
+- **Objective:** No more silent `clk`/`!rst_n` defaults.
+- **Dependency prerequisites:** T05, T07.
+- **Expected deliverables:** typed errors, CLI flags, semantic reset
+  comparator, tests.
+- **Validation checklist:**
+  - [ ] Missing clocking raises `MissingClockingError`.
+  - [ ] `!rst_n` ≡ `rst_n == 0` holds in equivalence.
+  - [ ] `sva formal check --clock hclk --reset rst_n` works.
+- **Files likely touched:** `formal/parse.py`, `formal/model.py`,
+  `formal/service.py`, `cli/formal_flags.py` (new), formal tests.
+- **Notes:** CLI flag module is mounted by T13.
+
+### T09 — Describe NL templates + uncertainty
+
+- **Objective:** Fill missing NL templates, mark opaque passthrough.
+- **Dependency prerequisites:** T07.
+- **Expected deliverables:** template coverage, `[unverified]` marker,
+  tests.
+- **Validation checklist:**
+  - [ ] Every lexed `$ident` has a template or is explicitly exempt.
+  - [ ] Opaque nodes surface as `[unverified]` in both SVAD and CoT.
+- **Files likely touched:** `describe/translator.py`, `describe/cot.py`,
+  `tests/describe/test_uncertainty.py` (new).
+- **Notes:** Preserve public `translate()` / `build()` signatures.
+
+### T10 — Timing DSL grammar parser
+
+- **Objective:** Replace regex-per-line DSL parser with a grammar.
+- **Dependency prerequisites:** none.
+- **Expected deliverables:** `timing/frontend/grammar.py`, rewritten
+  parser, tests.
+- **Validation checklist:**
+  - [ ] Every existing `.td` example parses.
+  - [ ] Trailing `# …` comments tolerated.
+  - [ ] Multi-line declarations parse.
+- **Files likely touched:** `timing/frontend/parser.py`,
+  `timing/frontend/grammar.py` (new), `timing/frontend/validate.py`,
+  `tests/timing/test_grammar_parser.py` (new).
+- **Notes:** Core / bridge / render APIs unchanged.
+
+### T11 — Timing extraction status surface
+
+- **Objective:** Bubble `LOSSY`/`UNSUPPORTED` to the CLI.
+- **Dependency prerequisites:** T02.
+- **Expected deliverables:** `ExtractionReport`, targeted exception
+  handling, tests.
+- **Validation checklist:**
+  - [ ] Unsupported input yields a non-EXACT report with reasons.
+  - [ ] Clean input yields `EXACT` and an empty reasons list.
+- **Files likely touched:** `timing/bridge/from_sva.py`,
+  `timing/bridge/status.py` (new),
+  `tests/timing/test_extraction_status.py` (new).
+- **Notes:** T13 consumes the report to decide exit code 6.
+
+### T12 — Data cache + LLM retry
+
+- **Objective:** Safe multiprocessing cache and resilient LLM client.
+- **Dependency prerequisites:** T02.
+- **Expected deliverables:** atomic+locked cache writes, retry
+  decorator, `svad_source` visibility, tests.
+- **Validation checklist:**
+  - [ ] Parallel stress produces no corrupted JSON.
+  - [ ] 429 then 200 → retry succeeds.
+  - [ ] Persistent 500 → fallback logged and counted.
+- **Files likely touched:** `data/dataset.py`, `data/benchmark.py`,
+  `runtime/llm.py`, `runtime/retry.py` (new),
+  `tests/data/test_cache_locking.py` (new),
+  `tests/data/test_llm_retry.py` (new).
+- **Notes:** Keep public `DatasetBuilder`/`BenchmarkRunner` stable.
+
+### T13 — CLI error + exit codes
+
+- **Objective:** Typed exit codes and composed per-task flag modules.
+- **Dependency prerequisites:** T02, T03, T07, T08, T11, T12.
+- **Expected deliverables:** `cli/exit_codes.py`, updated
+  `_handle_cli_errors`, `--verbose`, end-of-run diagnostics summary.
+- **Validation checklist:**
+  - [ ] Missing backend → exit 3.
+  - [ ] Parse error → exit 4.
+  - [ ] Timeout → exit 5.
+  - [ ] Lossy extraction → exit 6.
+- **Files likely touched:** `cli/main.py`, `cli/exit_codes.py` (new),
+  `tests/cli/test_exit_codes.py` (new).
+- **Notes:** Exclusive edit wave on `cli/main.py`.
+
+### T14 — Regression, determinism, concurrency tests
+
+- **Objective:** Prevent every fixed gap from re-opening.
+- **Dependency prerequisites:** T01–T13.
+- **Expected deliverables:** integration tests, fixtures, optional
+  `pytest-cov` wiring.
+- **Validation checklist:**
+  - [ ] Every R1–R18 has at least one regression test.
+  - [ ] `pytest -q` green on clean checkout.
+- **Files likely touched:** `tests/integration/*` (new),
+  `tests/fixtures/sva_corpus/*` (new), `pyproject.toml` (dev extra).
+- **Notes:** No source-code changes.
+
+### T15 — `LIMITATIONS.md` + `SUPPORTED_FEATURES.md`
+
+- **Objective:** Publish the user-facing feature + limitation
+  inventories requested by the project brief.
+- **Dependency prerequisites:** T01–T14.
+- **Expected deliverables:** two CommonMark docs with unique IDs and
+  cross-links, pointer added at the bottom of `docs/gaps.md`.
+- **Validation checklist:**
+  - [ ] Every unfixed gaps.md item appears with a `L-xx` ID.
+  - [ ] Every supported feature has a `F-xx` ID.
+  - [ ] Both docs render cleanly in GitHub preview.
+- **Files likely touched:** `docs/LIMITATIONS.md` (new),
+  `docs/SUPPORTED_FEATURES.md` (new), bottom of `docs/gaps.md`.
+- **Notes:** Link — do not duplicate — gap content.
+
+---
+
+## 6. Update log
+
+Format: `YYYY-MM-DD HH:MM — T<id> — <owner> — <status transition> — <one-line note>`.
+Append new entries at the bottom. Never rewrite history.
+
+- 2026-04-19 — scaffolder — created — Planning + shared docs authored;
+  project scaffold laid out; all tasks seeded as NOT_STARTED.
+
+<!-- Append new log entries below this line. -->
