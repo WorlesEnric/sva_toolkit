@@ -126,7 +126,7 @@ flowchart TD
 | T02     | Codex          | DONE        | 100        | 2026-04-20  | —        | Delivered atomic writers, diagnostics/logging, exports, and runtime tests    |
 | T03     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, harden `runtime/process.py` (setsid, killpg, typed errors)           |
 | T04     | codex-t4       | DONE        | 100        | 2026-04-20  | —        | Delivered seedable `GenerationRng`, CLI `--seed`, determinism tests; T14 now unblocked |
-| T05     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, add `formal/sanitize.py` and migrate backends to use it              |
+| T05     | codex-t05      | DONE        | 100        | 2026-04-20  | —        | Sanitizer landed; T08 can reuse `formal/sanitize.py` while removing defaults |
 | T06     | —              | NOT_STARTED | 0          | 2026-04-19  | T01      | Wait for T01 DONE, then expand lexer keyword set and AST dataclasses        |
 | T07     | —              | NOT_STARTED | 0          | 2026-04-19  | T06      | Wait for T06 DONE, then expand parser/emitter and surface opaque downgrades |
 | T08     | —              | NOT_STARTED | 0          | 2026-04-19  | T05, T07 | Wait for T05 and T07 DONE, then remove hard-coded clock/reset defaults      |
@@ -388,3 +388,5 @@ Append new entries at the bottom. Never rewrite history.
 - 2026-04-20 11:04 — T04 — codex-t4 — IN_PROGRESS -> DONE — Added `GenerationRng`, threaded RNG through `generate/`, mounted CLI `--seed`, printed implicit seeds to stderr, and landed determinism coverage with passing pytest + ruff.
 - 2026-04-20 15:44 — T02 — Codex — NOT_STARTED -> IN_PROGRESS — Claimed task, reviewed docs, and aligned design against runtime/test scaffolds.
 - 2026-04-20 15:57 — T02 — Codex — IN_PROGRESS -> DONE — Implemented atomic I/O and diagnostics helpers; `pytest -q tests/runtime` and `ruff check` passed.
+- 2026-04-20 17:56 — T05 — codex-t05 — NOT_STARTED -> IN_PROGRESS — Claimed template sanitization; validating current backends and replacing scaffolded sanitizer/tests.
+- 2026-04-20 18:03 — T05 — codex-t05 — IN_PROGRESS -> DONE — Added shared formal sanitizer, migrated EBMC/VCF templates off `str.format`, and passed `pytest -q tests/formal` plus `ruff check` on touched files.

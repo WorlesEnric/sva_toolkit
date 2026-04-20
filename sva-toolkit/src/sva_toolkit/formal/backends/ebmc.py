@@ -3,23 +3,27 @@ from __future__ import annotations
 import re
 import shutil
 from pathlib import Path
+from string import Template
 
 from sva_toolkit.formal.model import CheckResult, FormalProperty, ImplicationResult
+from sva_toolkit.formal.sanitize import IdentifierError, escape_body, validate_clock, validate_reset, validate_signal
 from sva_toolkit.runtime.process import make_work_dir, run_tool
 
 
 class EbmcBackend:
     """EBMC-based formal verification backend."""
 
-    MODULE_TEMPLATE = """module sva_checker(
-    input wire {clock_name},
-    input wire {reset_name}{signal_ports}
+    MODULE_TEMPLATE = Template(
+        """module sva_checker(
+    input wire ${clock_name},
+    input wire ${reset_name}${signal_ports}
 );
-    assume property (@({clock_edge} {clock_name}) disable iff ({reset_expr}) ({antecedent}));
-    assert property (@({clock_edge} {clock_name}) disable iff ({reset_expr}) ({consequent}));
-    cover property (@({clock_edge} {clock_name}) disable iff ({reset_expr}) ({antecedent}));
+    assume property (@(${clock_edge} ${clock_name}) disable iff (${reset_expr}) (${antecedent}));
+    assert property (@(${clock_edge} ${clock_name}) disable iff (${reset_expr}) (${consequent}));
+    cover property (@(${clock_edge} ${clock_name}) disable iff (${reset_expr}) (${antecedent}));
 endmodule
 """
+    )
 
     _SYNTAX_PATTERNS = (
         "syntax error",
@@ -129,20 +133,20 @@ endmodule
                 shutil.rmtree(work_dir, ignore_errors=True)
 
     def _build_module(self, antecedent: FormalProperty, consequent: FormalProperty) -> str:
-        signal_ports = self._render_signal_ports(
-            sorted(
-                (antecedent.signals | consequent.signals)
-                - {antecedent.clock_name, antecedent.reset_name, consequent.clock_name, consequent.reset_name}
-            )
+        self._validate_clock_edge(antecedent.clock_edge)
+        signal_names = sorted(
+            (antecedent.signals | consequent.signals)
+            - {antecedent.clock_name, antecedent.reset_name, consequent.clock_name, consequent.reset_name}
         )
-        return self.MODULE_TEMPLATE.format(
-            clock_name=antecedent.clock_name,
-            reset_name=antecedent.reset_name,
+        signal_ports = self._render_signal_ports(signal_names)
+        return self.MODULE_TEMPLATE.substitute(
+            clock_name=validate_clock(antecedent.clock_name),
+            reset_name=validate_signal(antecedent.reset_name),
             signal_ports=signal_ports,
             clock_edge=antecedent.clock_edge,
-            reset_expr=antecedent.reset_expr,
-            antecedent=antecedent.body,
-            consequent=consequent.body,
+            reset_expr=escape_body(validate_reset(antecedent.reset_expr)),
+            antecedent=escape_body(antecedent.body),
+            consequent=escape_body(consequent.body),
         )
 
     def _validate_properties(
@@ -180,12 +184,38 @@ endmodule
                 ),
             )
 
+        try:
+            self._validate_template_inputs(antecedent, consequent)
+        except (IdentifierError, ValueError) as exc:
+            return CheckResult(
+                result=ImplicationResult.SYNTAX_ERROR,
+                message=str(exc),
+            )
+
         return None
 
     def _render_signal_ports(self, signal_names: list[str]) -> str:
         if not signal_names:
             return ""
-        return "".join(f",\n    input wire {signal_name}" for signal_name in signal_names)
+        return "".join(f",\n    input wire {validate_signal(signal_name)}" for signal_name in signal_names)
+
+    def _validate_template_inputs(self, antecedent: FormalProperty, consequent: FormalProperty) -> None:
+        self._validate_clock_edge(antecedent.clock_edge)
+        self._validate_clock_edge(consequent.clock_edge)
+        validate_clock(antecedent.clock_name)
+        validate_clock(consequent.clock_name)
+        validate_reset(antecedent.reset_expr)
+        validate_reset(consequent.reset_expr)
+        validate_signal(antecedent.reset_name)
+        validate_signal(consequent.reset_name)
+        for signal_name in sorted(antecedent.signals | consequent.signals):
+            validate_signal(signal_name)
+
+    def _validate_clock_edge(self, clock_edge: str) -> None:
+        if clock_edge not in {"posedge", "negedge"}:
+            raise ValueError(
+                f"Clock edge must be 'posedge' or 'negedge' for generated formal modules: {clock_edge!r}"
+            )
 
     def _combine_output(self, stdout: str, stderr: str) -> str:
         parts = [part.strip() for part in (stdout, stderr) if part.strip()]
