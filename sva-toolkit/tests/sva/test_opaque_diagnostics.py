@@ -22,6 +22,21 @@ def reset_parser_diagnostics() -> None:
     ParserDiagnostics.reset()
 
 
+@pytest.fixture(autouse=True)
+def isolate_logger() -> None:
+    logger = logging.getLogger("sva_toolkit")
+    original_handlers = list(logger.handlers)
+    original_level = logger.level
+    original_propagate = logger.propagate
+
+    logger.handlers.clear()
+    logger.propagate = True
+    yield
+    logger.handlers[:] = original_handlers
+    logger.setLevel(original_level)
+    logger.propagate = original_propagate
+
+
 def test_recover_property_logs_warning_and_counts(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING, logger="sva_toolkit"):
         node = parse_property_body("req |->", recover=True)

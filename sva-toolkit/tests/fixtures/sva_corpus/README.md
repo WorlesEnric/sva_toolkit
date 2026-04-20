@@ -1,14 +1,18 @@
 # Adversarial SVA Corpus
 
-SCAFFOLD SUMMARY — replace this paragraph with the real fixture notes in task T14.
+This directory holds the small, hand-authored SystemVerilog assertion
+files used by the T14 regression suite. Each fixture locks one lexer or
+preprocessor edge from `docs/gaps.md` §2.3 / §5 so future changes cannot
+quietly reintroduce the original failure modes.
 
-This directory holds small, hand-authored SystemVerilog assertion files
-used by the T14 integration suite to stress the lexer and parser on
-inputs that today (pre-remediation) fail or silently downgrade. Each
-file targets one concern from `docs/gaps.md` §2.3 / §3.1 / risk
-register, and the filename encodes the concern: `with_line_comments.sv`
-for `//`, `with_block_comments.sv` for `/* … */`, `with_backtick_directives.sv`
-for `` `define``/`` `ifdef``/`` `include``, `with_string_literals.sv`
-for `"…"`, `with_attributes.sv` for `(* … *)` instances,
-`with_encrypted_ip.sv` for `` `protect`` regions (expected to raise a
-typed error, not crash). Relates to DAG task T14.
+- `with_line_comments.sv`: leading, inline, and trailing `//` comments.
+- `with_block_comments.sv`: block comments, including a `/* nested */`
+  marker that must stop at the first terminator.
+- `with_backtick_directives.sv`: `` `define``, `` `ifdef``, `` `include``,
+  `` `timescale``, and the closing `` `endif``.
+- `with_string_literals.sv`: a real string token inside an assertion
+  expression.
+- `with_attributes.sv`: a `(* ... *)` attribute instance attached to an
+  assertion.
+- `with_encrypted_ip.sv`: an encrypted-IP marker that must fail with a
+  typed parse error instead of crashing or silently skipping content.

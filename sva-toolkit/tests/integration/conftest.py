@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Callable
 
 import pytest
 from click.testing import CliRunner
 
 
 _PROPERTY_BLOCK_RE = re.compile(r"property\b.*?endproperty", re.DOTALL)
+_SVA_CORPUS_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "sva_corpus"
 
 
 @pytest.fixture
@@ -45,6 +47,25 @@ def timing_diagram_path(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+@pytest.fixture
+def sva_corpus_dir() -> Path:
+    return _SVA_CORPUS_DIR
+
+
+@pytest.fixture
+def sva_corpus_file(sva_corpus_dir: Path) -> Callable[[str], Path]:
+    def _resolve(name: str) -> Path:
+        return sva_corpus_dir / name
+
+    return _resolve
+
+
+@pytest.fixture
+def long_property_text() -> str:
+    repeated_tail = " ".join("##1 ack" for _ in range(400))
+    return f"assert property (@(posedge clk) disable iff (!rst_n) req |-> {repeated_tail});"
 
 
 def extract_property_blocks(text: str) -> tuple[str, ...]:

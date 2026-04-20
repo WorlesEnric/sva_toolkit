@@ -1,17 +1,45 @@
-"""
-SCAFFOLD SUMMARY — replace this paragraph with the real implementation in task T14.
-
-This smoke-style integration test module addresses the "no performance
-ceiling" observation in `docs/gaps.md` §5 (R16) at the regression level
-only: no performance rewrite is in scope. It generates a synthetic
-property with >1000 tokens (long chain of `##1 a` delays) and asserts:
-(1) `sva parse` terminates under 2 seconds (loose wall-clock bound —
-the purpose is to catch regressions, not benchmark), (2) `sva describe
-svad` terminates without raising, (3) peak resident memory stays under
-a generous bound (best-effort via `resource.getrusage` on POSIX;
-skipped elsewhere). Relates to DAG task T14.
-"""
-
 from __future__ import annotations
 
-# Tests belong to T14. Intentionally empty.
+import time
+
+import pytest
+
+from sva_toolkit.cli.exit_codes import ExitCode
+from sva_toolkit.cli.main import main
+from sva_toolkit.sva.lexer import tokenize
+from sva_toolkit.sva.parser import parse_property_text
+
+
+pytestmark = pytest.mark.integration
+
+
+def test_large_property_parses_under_two_seconds(long_property_text: str) -> None:
+    # R16 regression: large properties should continue to parse within a modest smoke-test latency budget.
+    token_count = len(tokenize(long_property_text)) - 1
+
+    started = time.perf_counter()
+    spec = parse_property_text(long_property_text)
+    elapsed = time.perf_counter() - started
+
+    assert token_count > 1000
+    assert elapsed < 2.0, elapsed
+    assert spec.clocking is not None
+    assert spec.clocking.signal.name == "clk"
+
+
+@pytest.mark.parametrize("command", ["parse", "describe"])
+def test_large_property_cli_smoke_remains_green(runner, long_property_text: str, command: str, tmp_path) -> None:
+    input_path = tmp_path / "long_property.sv"
+    input_path.write_text(long_property_text, encoding="utf-8")
+
+    if command == "parse":
+        args = ["parse", str(input_path), "--format", "json"]
+        expected = '"kind": "property"'
+    else:
+        args = ["describe", "svad", str(input_path)]
+        expected = "Relevant Signals"
+
+    result = runner.invoke(main, args, prog_name="sva")
+
+    assert result.exit_code == ExitCode.SUCCESS
+    assert expected in result.output

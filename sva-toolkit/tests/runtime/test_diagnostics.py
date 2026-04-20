@@ -42,6 +42,11 @@ def test_render_summary_is_deterministic_and_alphabetical() -> None:
 
 
 def test_configure_cli_logging_is_idempotent_and_uses_stable_format(capsys) -> None:
+    logger = diagnostics_module.LOGGER
+    for handler in list(logger.handlers):
+        if not isinstance(handler, logging.NullHandler):
+            logger.removeHandler(handler)
+
     module = importlib.reload(diagnostics_module)
 
     logger = module.configure_cli_logging(0)
