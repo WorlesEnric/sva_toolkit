@@ -1,29 +1,57 @@
-"""Practical SVA property parsing helpers."""
+"""Practical SVA property parsing helpers with explicit clock/reset handling."""
 
 from __future__ import annotations
 
 import re
 
-from sva_toolkit.formal.model import FormalProperty
+from sva_toolkit.formal.model import (
+    ClockMismatchError,
+    FormalProperty,
+    MissingClockingError,
+    MissingResetError,
+    ResetMismatchError,
+    UnsupportedClockingError,
+    normalize_clock_edge,
+    reset_exprs_equivalent,
+)
+from sva_toolkit.formal.sanitize import validate_clock, validate_reset
+from sva_toolkit.sva.ast import MultiEventClocking
 from sva_toolkit.sva.errors import SvaSyntaxError
 from sva_toolkit.sva.lexer import TokenKind, tokenize
 from sva_toolkit.sva.parser import parse_property_text
 
 
 IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
-_CLOCK_RE = re.compile(rf"@\s*\(\s*(posedge|negedge)\s+({IDENT})\s*\)", re.IGNORECASE)
+_CLOCK_RE = re.compile(rf"@\s*\(\s*(posedge|negedge|edge)\s+({IDENT})\s*\)", re.IGNORECASE)
 _HEADER_RE = re.compile(rf"\bproperty\s+({IDENT})\b", re.IGNORECASE)
 
 
-def parse_property(text: str) -> FormalProperty:
-    """Parse a practical SVA property/assertion into a thin normalized model."""
+def parse_property(
+    text: str,
+    *,
+    clock: str | None = None,
+    clock_edge: str | None = None,
+    reset: str | None = None,
+    require_clocking: bool = True,
+    require_reset: bool = True,
+) -> FormalProperty:
+    """Parse an SVA property/assertion and require explicit clock/reset annotations."""
 
     stripped = text.strip()
     try:
         spec = parse_property_text(stripped)
     except SvaSyntaxError:
-        return _parse_property_fallback(stripped)
-    return FormalProperty(name=spec.name, body="", ast=spec)
+        prop = _parse_property_fallback(stripped)
+    else:
+        prop = FormalProperty.from_ast(spec)
+    return _require_explicit_annotations(
+        prop,
+        clock=clock,
+        clock_edge=clock_edge,
+        reset=reset,
+        require_clocking=require_clocking,
+        require_reset=require_reset,
+    )
 
 
 def split_property_texts(text: str) -> tuple[str, ...]:
@@ -93,8 +121,8 @@ def _parse_property_fallback(text: str) -> FormalProperty:
         name=name,
         body=normalized_body,
         clock_edge=clock_edge,
-        clock_name=clock_name or "clk",
-        reset_expr=reset_expr or "!rst_n",
+        clock_name=clock_name,
+        reset_expr=reset_expr,
         signals=_extract_signals(normalized_body),
         has_explicit_reset=reset_expr is not None,
     )
@@ -121,10 +149,10 @@ def _extract_property_surface(text: str) -> tuple[str | None, str]:
     return None, text.rstrip(";").strip()
 
 
-def _extract_clocking(text: str) -> tuple[str, str | None]:
+def _extract_clocking(text: str) -> tuple[str | None, str | None]:
     if match := _CLOCK_RE.search(text):
         return match.group(1).lower(), match.group(2)
-    return "posedge", None
+    return None, None
 
 
 def _extract_disable_iff(text: str) -> str | None:
@@ -238,3 +266,73 @@ def _extract_signals(body: str) -> tuple[str, ...]:
         if token not in names:
             names.append(token)
     return tuple(names)
+
+
+def _require_explicit_annotations(
+    prop: FormalProperty,
+    *,
+    clock: str | None,
+    clock_edge: str | None,
+    reset: str | None,
+    require_clocking: bool,
+    require_reset: bool,
+) -> FormalProperty:
+    if prop.ast is not None and isinstance(prop.ast.clocking, MultiEventClocking):
+        raise UnsupportedClockingError(
+            "Only single-event @(posedge clk) or @(negedge clk) clocking is supported for formal normalization."
+        )
+
+    supplied_clock_name, supplied_clock_edge = _normalize_supplied_clocking(clock=clock, clock_edge=clock_edge)
+    effective_clock_name = prop.clock_name.strip() if prop.clock_name is not None else None
+    effective_clock_edge = normalize_clock_edge(prop.clock_edge) if prop.clock_edge is not None else None
+
+    if effective_clock_name is None or effective_clock_edge is None:
+        if supplied_clock_name is None or supplied_clock_edge is None:
+            if require_clocking:
+                raise MissingClockingError(
+                    "Explicit clocking is required because the property text does not name a clocking event; "
+                    "provide `@(posedge clk)` in the property or pass both `clock`/`clock_edge` "
+                    "(`--clock`/`--clock-edge` in the CLI)."
+                )
+        effective_clock_name = supplied_clock_name
+        effective_clock_edge = supplied_clock_edge
+    elif supplied_clock_name is not None and supplied_clock_edge is not None:
+        if (effective_clock_edge, effective_clock_name) != (supplied_clock_edge, supplied_clock_name):
+            raise ClockMismatchError(
+                "Explicit clocking override does not match the property text: "
+                f"{effective_clock_edge} {effective_clock_name} vs {supplied_clock_edge} {supplied_clock_name}."
+            )
+
+    supplied_reset = validate_reset(reset) if reset is not None else None
+    effective_reset = prop.reset_expr.strip() if prop.reset_expr is not None else None
+    if effective_reset is None:
+        if supplied_reset is None:
+            if require_reset:
+                raise MissingResetError(
+                    "Explicit reset annotation is required because the property text does not name a reset expression; "
+                    "provide `disable iff (...)` in the property or pass `reset` (`--reset` in the CLI)."
+                )
+        effective_reset = supplied_reset
+    elif supplied_reset is not None and not reset_exprs_equivalent(effective_reset, supplied_reset):
+        raise ResetMismatchError(
+            "Explicit reset override does not match the property text: "
+            f"{effective_reset} vs {supplied_reset}."
+        )
+
+    return prop.model_copy(
+        update={
+            "clock_name": effective_clock_name,
+            "clock_edge": effective_clock_edge,
+            "reset_expr": effective_reset,
+        }
+    )
+
+
+def _normalize_supplied_clocking(*, clock: str | None, clock_edge: str | None) -> tuple[str | None, str | None]:
+    if clock is None and clock_edge is None:
+        return None, None
+    if clock is None or clock_edge is None:
+        raise MissingClockingError(
+            "Provide both `clock` and `clock_edge` together when the property text does not already name clocking."
+        )
+    return validate_clock(clock), normalize_clock_edge(clock_edge)

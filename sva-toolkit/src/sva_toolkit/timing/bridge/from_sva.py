@@ -461,7 +461,7 @@ def extract_sva_scenario(
 
     from sva_toolkit.formal.parse import parse_property
 
-    structure = parse_property(sva_text)
+    structure = parse_property(sva_text, require_clocking=False, require_reset=False)
     structure_ast = getattr(structure, "ast", None)
     property_body = getattr(structure, "body", "").strip().strip(";")
     property_name = name or getattr(structure, "name", None) or getattr(structure, "property_name", None) or "sva_property"
@@ -1481,6 +1481,7 @@ def _doc_to_formal_property(
     report: ExtractionReport,
 ):
     """Return a FormalProperty for the first property overlay in doc, or None."""
+    from sva_toolkit.formal.model import FormalPropertyError
     from sva_toolkit.formal.parse import parse_property
     if not doc.properties:
         return None
@@ -1488,8 +1489,8 @@ def _doc_to_formal_property(
     source = overlay.source
     if source:
         try:
-            return parse_property(source)
-        except ValueError as exc:
+            return parse_property(source, require_clocking=False, require_reset=False)
+        except (FormalPropertyError, SvaSyntaxError, ValueError) as exc:
             report.record_exception(
                 overlay.name,
                 stage="formal property reconstruction",
@@ -1513,6 +1514,8 @@ def _try_refine_with_witness(
     report: ExtractionReport,
 ) -> ScenarioDocument:
     """Attempt EBMC witness refinement on a single-property document."""
+    if not _has_witness_annotations(formal_prop):
+        return document
     synthesizer = EbmcWitnessSynthesizer()
     if not synthesizer.available:
         return document
@@ -1549,6 +1552,8 @@ def _try_joint_witness(
             props.append(fp)
     if not props:
         return merged_doc
+    if any(not _has_witness_annotations(prop) for prop in props):
+        return merged_doc
     # Linear causal chain: 0→1→2→...→N-1
     causal_order = [(i, i + 1) for i in range(len(props) - 1)]
     signal_widths = _signal_widths_from_doc(merged_doc)
@@ -1570,6 +1575,12 @@ def _try_joint_witness(
     if trace is None:
         return merged_doc
     return refine_document_from_witness(merged_doc, trace)
+
+
+def _has_witness_annotations(formal_prop) -> bool:
+    """Return True when witness synthesis has the required clock/reset annotations."""
+
+    return bool(formal_prop.clock_name and formal_prop.clock_edge and formal_prop.reset_expr)
 
 
 def _merge_cluster_legacy(documents: tuple[ScenarioDocument, ...]) -> ScenarioDocument:

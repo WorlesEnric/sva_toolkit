@@ -129,7 +129,7 @@ flowchart TD
 | T05     | codex-t05      | DONE        | 100        | 2026-04-20  | —        | Sanitizer landed; T08 can reuse `formal/sanitize.py` while removing defaults |
 | T06     | Codex-T06      | DONE        | 100        | 2026-04-20  | —        | Expanded lexer keyword/operator coverage, added placeholder AST nodes, and passed `pytest -q sva-toolkit/tests/sva` plus `ruff check` |
 | T07     | Codex-T07      | DONE        | 100        | 2026-04-20  | —        | Expanded parser/emitter coverage, surfaced opaque diagnostics, and passed `pytest -q tests/sva` plus `ruff check src tests` |
-| T08     | —              | NOT_STARTED | 0          | 2026-04-19  | T05, T07 | Wait for T05 and T07 DONE, then remove hard-coded clock/reset defaults      |
+| T08     | Codex-T08      | DONE        | 100        | 2026-04-20  | —        | Removed silent formal defaults, added explicit clock/reset CLI registration, and verified reset semantic normalization |
 | T09     | Codex-T09      | DONE        | 100        | 2026-04-20  | —        | Added describe-system-function templates, `[unverified]` opaque markers, CoT low-confidence surfacing, and passing describe regression coverage |
 | T10     | Codex-T10      | DONE        | 100        | 2026-04-20  | —        | Replaced the regex table with a grammar parser, added line:col diagnostics, and locked example output hashes plus negative coverage |
 | T11     | Codex-T11      | DONE        | 100        | 2026-04-20  | —        | `ExtractionReport` now flows through timing extraction/bundling and is ready for T13 exit-code handling |
@@ -386,6 +386,9 @@ Append new entries at the bottom. Never rewrite history.
 - 2026-04-20 18:05 — T01 — Codex — IN_PROGRESS -> DONE — Added trivia/preprocessor-aware lexing, new lexer tests, example corpus tokenization sweep, and cleared the repo-wide lint gate.
 
 <!-- Append new log entries below this line. -->
+- 2026-04-20 19:55 — T08 — Codex-T08 — NOT_STARTED -> IN_PROGRESS — Claimed mandatory clock/reset task; validating parse/model/service and CLI flag seams against T05/T07 outputs.
+- 2026-04-20 20:27 — T08 — Codex-T08 — scope note — Touched `src/sva_toolkit/timing/bridge/from_sva.py` minimally so timing extraction can keep its existing optional-reset behavior while `formal.parse_property()` becomes strict by default for formal flows.
+- 2026-04-20 20:27 — T08 — Codex-T08 — IN_PROGRESS -> DONE — Removed hard-coded formal clock/reset defaults, added typed missing-annotation errors plus reset semantic normalization, landed `cli/formal_flags.py`, and passed targeted pytest + broader timing/CLI regression sweeps with clean ruff.
 - 2026-04-20 10:28 — T04 — codex-t4 — NOT_STARTED -> IN_PROGRESS — Claimed seedable RNG task; auditing `generate/` call-sites and CLI integration.
 - 2026-04-20 11:02 — T04 — codex-t4 — scope note — Touched `tests/timing/test_dag_synthesis.py` and `tests/timing/test_ebmc_witness.py` only to remove pre-existing unused imports so required `ruff check src tests` would pass cleanly.
 - 2026-04-20 11:04 — T04 — codex-t4 — IN_PROGRESS -> DONE — Added `GenerationRng`, threaded RNG through `generate/`, mounted CLI `--seed`, printed implicit seeds to stderr, and landed determinism coverage with passing pytest + ruff.

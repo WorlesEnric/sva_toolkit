@@ -23,8 +23,14 @@ def test_vcformal_backend_runs_tool_and_reads_report(monkeypatch, tmp_path: Path
     monkeypatch.setattr("sva_toolkit.formal.backends.vcformal.run_tool", _run_tool)
 
     result = backend.check_implication(
-        FormalProperty(body="req |-> gnt", signals={"req", "gnt"}),
-        FormalProperty(body="req |-> ##1 done", signals={"req", "done"}),
+        FormalProperty(body="req |-> gnt", clock_name="clk", clock_edge="posedge", reset_expr="!rst_n", signals={"req", "gnt"}),
+        FormalProperty(
+            body="req |-> ##1 done",
+            clock_name="clk",
+            clock_edge="posedge",
+            reset_expr="!rst_n",
+            signals={"req", "done"},
+        ),
     )
 
     assert result.result is ImplicationResult.IMPLIES
@@ -47,8 +53,8 @@ def test_vcformal_backend_reports_falsified_result(monkeypatch, tmp_path: Path) 
     monkeypatch.setattr("sva_toolkit.formal.backends.vcformal.run_tool", _run_tool)
 
     result = backend.check_implication(
-        FormalProperty(body="req |-> gnt", signals={"req", "gnt"}),
-        FormalProperty(body="req |-> done", signals={"req", "done"}),
+        FormalProperty(body="req |-> gnt", clock_name="clk", clock_edge="posedge", reset_expr="!rst_n", signals={"req", "gnt"}),
+        FormalProperty(body="req |-> done", clock_name="clk", clock_edge="posedge", reset_expr="!rst_n", signals={"req", "done"}),
     )
 
     assert result.result is ImplicationResult.NOT_IMPLIES

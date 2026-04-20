@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from sva_toolkit.formal.backends.ebmc import EbmcBackend
 from sva_toolkit.formal.backends.vcformal import VcformalBackend
-from sva_toolkit.formal.model import CheckResult, ImplicationResult
+from sva_toolkit.formal.model import CheckResult, ImplicationResult, harmonize_property_pair
+from sva_toolkit.formal.normalize import normalize_property
 from sva_toolkit.formal.parse import parse_property
 from sva_toolkit.runtime.config import ToolConfig
 from sva_toolkit.runtime.tools import ToolRegistry, create_default_registry
+from sva_toolkit.sva.errors import SvaSyntaxError
 
 
 class FormalService:
@@ -38,15 +40,28 @@ class FormalService:
         self._configure_backend(self._vcformal)
         self._configure_backend(self._ebmc)
 
-    def check_implication(self, antecedent: str, consequent: str) -> CheckResult:
+    def check_implication(
+        self,
+        antecedent: str,
+        consequent: str,
+        *,
+        clock: str | None = None,
+        clock_edge: str | None = None,
+        reset: str | None = None,
+    ) -> CheckResult:
         try:
-            antecedent_property = parse_property(antecedent)
-            consequent_property = parse_property(consequent)
-        except Exception as exc:
+            antecedent_property = normalize_property(
+                parse_property(antecedent, clock=clock, clock_edge=clock_edge, reset=reset)
+            )
+            consequent_property = normalize_property(
+                parse_property(consequent, clock=clock, clock_edge=clock_edge, reset=reset)
+            )
+        except (SvaSyntaxError, ValueError) as exc:
             return CheckResult(
                 result=ImplicationResult.SYNTAX_ERROR,
                 message=f"Failed to parse property text: {exc}",
             )
+        antecedent_property, consequent_property = harmonize_property_pair(antecedent_property, consequent_property)
 
         backend = self._select_backend()
         if backend is None:
@@ -57,12 +72,20 @@ class FormalService:
 
         return backend.check_implication(antecedent_property, consequent_property)
 
-    def check_equivalence(self, sva1: str, sva2: str) -> CheckResult:
-        forward = self.check_implication(sva1, sva2)
+    def check_equivalence(
+        self,
+        sva1: str,
+        sva2: str,
+        *,
+        clock: str | None = None,
+        clock_edge: str | None = None,
+        reset: str | None = None,
+    ) -> CheckResult:
+        forward = self.check_implication(sva1, sva2, clock=clock, clock_edge=clock_edge, reset=reset)
         if forward.result not in {ImplicationResult.IMPLIES, ImplicationResult.NOT_IMPLIES}:
             return forward
 
-        reverse = self.check_implication(sva2, sva1)
+        reverse = self.check_implication(sva2, sva1, clock=clock, clock_edge=clock_edge, reset=reset)
         if reverse.result not in {ImplicationResult.IMPLIES, ImplicationResult.NOT_IMPLIES}:
             return reverse
 
@@ -90,9 +113,17 @@ class FormalService:
             log=self._combine_logs(forward, reverse),
         )
 
-    def get_relationship(self, sva1: str, sva2: str) -> tuple[bool, bool]:
-        forward = self.check_implication(sva1, sva2)
-        reverse = self.check_implication(sva2, sva1)
+    def get_relationship(
+        self,
+        sva1: str,
+        sva2: str,
+        *,
+        clock: str | None = None,
+        clock_edge: str | None = None,
+        reset: str | None = None,
+    ) -> tuple[bool, bool]:
+        forward = self.check_implication(sva1, sva2, clock=clock, clock_edge=clock_edge, reset=reset)
+        reverse = self.check_implication(sva2, sva1, clock=clock, clock_edge=clock_edge, reset=reset)
         return self._as_boolean(forward), self._as_boolean(reverse)
 
     def _select_backend(self) -> VcformalBackend | EbmcBackend | None:

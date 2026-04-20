@@ -85,6 +85,7 @@ def test_ebmc_template_preserves_literal_braces(tmp_path: Path) -> None:
     prop = FormalProperty(
         body="{req, ack} == 2'b10 && $rose(done)",
         clock_name="clk",
+        clock_edge="posedge",
         reset_expr="rst_n == 0",
         signals={"req", "ack", "done"},
     )
@@ -108,8 +109,8 @@ def test_ebmc_backend_rejects_reserved_signal_name() -> None:
     backend = EbmcBackend()
 
     result = backend.check_implication(
-        FormalProperty(body="req |-> module", signals={"req", "module"}),
-        FormalProperty(body="req |-> ack", signals={"req", "ack"}),
+        FormalProperty(body="req |-> module", clock_name="clk", clock_edge="posedge", reset_expr="!rst_n", signals={"req", "module"}),
+        FormalProperty(body="req |-> ack", clock_name="clk", clock_edge="posedge", reset_expr="!rst_n", signals={"req", "ack"}),
     )
 
     assert result.result is ImplicationResult.SYNTAX_ERROR
@@ -120,8 +121,20 @@ def test_vcformal_backend_rejects_hierarchical_clock_name() -> None:
     backend = VcformalBackend()
 
     result = backend.check_implication(
-        FormalProperty(body="req |-> ack", clock_name="u_dut.clk", signals={"req", "ack"}),
-        FormalProperty(body="req |-> ack", clock_name="u_dut.clk", signals={"req", "ack"}),
+        FormalProperty(
+            body="req |-> ack",
+            clock_name="u_dut.clk",
+            clock_edge="posedge",
+            reset_expr="!rst_n",
+            signals={"req", "ack"},
+        ),
+        FormalProperty(
+            body="req |-> ack",
+            clock_name="u_dut.clk",
+            clock_edge="posedge",
+            reset_expr="!rst_n",
+            signals={"req", "ack"},
+        ),
     )
 
     assert result.result is ImplicationResult.SYNTAX_ERROR
