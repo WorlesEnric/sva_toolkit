@@ -1414,6 +1414,19 @@ Rules:
   with your actual implementation.
 - Do not bundle unrelated refactors.
 - Update docs/task_dag_shared.md status and append to the log.
+Git workflow requirements:
+* Perform the main implementation/documentation/debugging work first.
+* Only after the main job is finished, update docs/task_dag_shared.md with the final task outcome.
+* Then perform git operations in this order:
+    1. Review the final diff and ensure only task-relevant changes are included.
+    2. Run git add on the intended files.
+    3. Create a commit with a clear task-scoped message referencing {{TASK_ID}}.
+    4. If any uncommitted work (i.e., irrelevant files) remains locally after the commit, stash it with a descriptive message referencing {{TASK_ID}}.
+    5. Rebase your current branch on the local main branch, because this repository is operated through git worktrees for parallel worker execution, and you are working on one of those.
+* If the rebase fails and you cannot safely resolve it within task scope, set the task status to BLOCKED and document the exact conflict files and recommended recovery steps in docs/task_dag_shared.md.
+* Do not perform destructive git operations.
+* Do not rewrite unrelated history.
+* Do not skip the commit/stash/rebase sequence unless the environment explicitly prevents git operations; if so, record that limitation explicitly in docs/task_dag_shared.md.
 
 ### 6.9 Prompt — T09
 
@@ -1474,6 +1487,19 @@ Rules:
   with your actual implementation.
 - Preserve the public translator/CoT signatures.
 - Update docs/task_dag_shared.md status and append to the log.
+Git workflow requirements:
+* Perform the main implementation/documentation/debugging work first.
+* Only after the main job is finished, update docs/task_dag_shared.md with the final task outcome.
+* Then perform git operations in this order:
+    1. Review the final diff and ensure only task-relevant changes are included.
+    2. Run git add on the intended files.
+    3. Create a commit with a clear task-scoped message referencing {{TASK_ID}}.
+    4. If any uncommitted work (i.e., irrelevant files) remains locally after the commit, stash it with a descriptive message referencing {{TASK_ID}}.
+    5. Rebase your current branch on the local main branch, because this repository is operated through git worktrees for parallel worker execution, and you are working on one of those.
+* If the rebase fails and you cannot safely resolve it within task scope, set the task status to BLOCKED and document the exact conflict files and recommended recovery steps in docs/task_dag_shared.md.
+* Do not perform destructive git operations.
+* Do not rewrite unrelated history.
+* Do not skip the commit/stash/rebase sequence unless the environment explicitly prevents git operations; if so, record that limitation explicitly in docs/task_dag_shared.md.
 
 ### 6.10 Prompt — T10
 
@@ -1526,6 +1552,19 @@ Rules:
   with your actual implementation.
 - Do not alter the timing core/bridge/render APIs.
 - Update docs/task_dag_shared.md status and append to the log.
+Git workflow requirements:
+* Perform the main implementation/documentation/debugging work first.
+* Only after the main job is finished, update docs/task_dag_shared.md with the final task outcome.
+* Then perform git operations in this order:
+    1. Review the final diff and ensure only task-relevant changes are included.
+    2. Run git add on the intended files.
+    3. Create a commit with a clear task-scoped message referencing {{TASK_ID}}.
+    4. If any uncommitted work (i.e., irrelevant files) remains locally after the commit, stash it with a descriptive message referencing {{TASK_ID}}.
+    5. Rebase your current branch on the local main branch, because this repository is operated through git worktrees for parallel worker execution, and you are working on one of those.
+* If the rebase fails and you cannot safely resolve it within task scope, set the task status to BLOCKED and document the exact conflict files and recommended recovery steps in docs/task_dag_shared.md.
+* Do not perform destructive git operations.
+* Do not rewrite unrelated history.
+* Do not skip the commit/stash/rebase sequence unless the environment explicitly prevents git operations; if so, record that limitation explicitly in docs/task_dag_shared.md.
 
 ### 6.11 Prompt — T11
 
@@ -1578,6 +1617,20 @@ Rules:
 - Do not change the other extraction APIs beyond adding the report
   return value.
 - Update docs/task_dag_shared.md status and append to the log.
+
+Git workflow requirements:
+* Perform the main implementation/documentation/debugging work first.
+* Only after the main job is finished, update docs/task_dag_shared.md with the final task outcome.
+* Then perform git operations in this order:
+    1. Review the final diff and ensure only task-relevant changes are included.
+    2. Run git add on the intended files.
+    3. Create a commit with a clear task-scoped message referencing {{TASK_ID}}.
+    4. If any uncommitted work (i.e., irrelevant files) remains locally after the commit, stash it with a descriptive message referencing {{TASK_ID}}.
+    5. Rebase your current branch on the local main branch, because this repository is operated through git worktrees for parallel worker execution, and you are working on one of those.
+* If the rebase fails and you cannot safely resolve it within task scope, set the task status to BLOCKED and document the exact conflict files and recommended recovery steps in docs/task_dag_shared.md.
+* Do not perform destructive git operations.
+* Do not rewrite unrelated history.
+* Do not skip the commit/stash/rebase sequence unless the environment explicitly prevents git operations; if so, record that limitation explicitly in docs/task_dag_shared.md.
 
 ### 6.12 Prompt — T12
 
@@ -1643,6 +1696,20 @@ Rules:
   API.
 - Update docs/task_dag_shared.md status and append to the log.
 
+Git workflow requirements:
+* Perform the main implementation/documentation/debugging work first.
+* Only after the main job is finished, update docs/task_dag_shared.md with the final task outcome.
+* Then perform git operations in this order:
+    1. Review the final diff and ensure only task-relevant changes are included.
+    2. Run git add on the intended files.
+    3. Create a commit with a clear task-scoped message referencing {{TASK_ID}}.
+    4. If any uncommitted work (i.e., irrelevant files) remains locally after the commit, stash it with a descriptive message referencing {{TASK_ID}}.
+    5. Rebase your current branch on the local main branch, because this repository is operated through git worktrees for parallel worker execution, and you are working on one of those.
+* If the rebase fails and you cannot safely resolve it within task scope, set the task status to BLOCKED and document the exact conflict files and recommended recovery steps in docs/task_dag_shared.md.
+* Do not perform destructive git operations.
+* Do not rewrite unrelated history.
+* Do not skip the commit/stash/rebase sequence unless the environment explicitly prevents git operations; if so, record that limitation explicitly in docs/task_dag_shared.md.
+
 ### 6.13 Prompt — T13
 
 You are a coding worker assigned to T13: CLI error reporting and typed
@@ -1703,6 +1770,20 @@ Rules:
 - Do not re-open any silent-fallback path.
 - Update docs/task_dag_shared.md status and append to the log.
 
+Git workflow requirements:
+* Perform the main implementation/documentation/debugging work first.
+* Only after the main job is finished, update docs/task_dag_shared.md with the final task outcome.
+* Then perform git operations in this order:
+    1. Review the final diff and ensure only task-relevant changes are included.
+    2. Run git add on the intended files.
+    3. Create a commit with a clear task-scoped message referencing {{TASK_ID}}.
+    4. If any uncommitted work (i.e., irrelevant files) remains locally after the commit, stash it with a descriptive message referencing {{TASK_ID}}.
+    5. Rebase your current branch on the local main branch, because this repository is operated through git worktrees for parallel worker execution, and you are working on one of those.
+* If the rebase fails and you cannot safely resolve it within task scope, set the task status to BLOCKED and document the exact conflict files and recommended recovery steps in docs/task_dag_shared.md.
+* Do not perform destructive git operations.
+* Do not rewrite unrelated history.
+* Do not skip the commit/stash/rebase sequence unless the environment explicitly prevents git operations; if so, record that limitation explicitly in docs/task_dag_shared.md.
+
 ### 6.14 Prompt — T14
 
 You are a coding worker assigned to T14: Regression, determinism, and
@@ -1758,6 +1839,20 @@ Rules:
 
 - Do not modify source files outside `tests/` and `pyproject.toml`.
 - Update docs/task_dag_shared.md status and append to the log.
+
+Git workflow requirements:
+* Perform the main implementation/documentation/debugging work first.
+* Only after the main job is finished, update docs/task_dag_shared.md with the final task outcome.
+* Then perform git operations in this order:
+    1. Review the final diff and ensure only task-relevant changes are included.
+    2. Run git add on the intended files.
+    3. Create a commit with a clear task-scoped message referencing {{TASK_ID}}.
+    4. If any uncommitted work (i.e., irrelevant files) remains locally after the commit, stash it with a descriptive message referencing {{TASK_ID}}.
+    5. Rebase your current branch on the local main branch, because this repository is operated through git worktrees for parallel worker execution, and you are working on one of those.
+* If the rebase fails and you cannot safely resolve it within task scope, set the task status to BLOCKED and document the exact conflict files and recommended recovery steps in docs/task_dag_shared.md.
+* Do not perform destructive git operations.
+* Do not rewrite unrelated history.
+* Do not skip the commit/stash/rebase sequence unless the environment explicitly prevents git operations; if so, record that limitation explicitly in docs/task_dag_shared.md.
 
 ### 6.15 Prompt — T15
 
@@ -1831,6 +1926,20 @@ Rules:
 - Do not repeat more than a paragraph of gaps.md content; link
   instead.
 - Update docs/task_dag_shared.md status and append to the log.
+
+Git workflow requirements:
+* Perform the main implementation/documentation/debugging work first.
+* Only after the main job is finished, update docs/task_dag_shared.md with the final task outcome.
+* Then perform git operations in this order:
+    1. Review the final diff and ensure only task-relevant changes are included.
+    2. Run git add on the intended files.
+    3. Create a commit with a clear task-scoped message referencing {{TASK_ID}}.
+    4. If any uncommitted work (i.e., irrelevant files) remains locally after the commit, stash it with a descriptive message referencing {{TASK_ID}}.
+    5. Rebase your current branch on the local main branch, because this repository is operated through git worktrees for parallel worker execution, and you are working on one of those.
+* If the rebase fails and you cannot safely resolve it within task scope, set the task status to BLOCKED and document the exact conflict files and recommended recovery steps in docs/task_dag_shared.md.
+* Do not perform destructive git operations.
+* Do not rewrite unrelated history.
+* Do not skip the commit/stash/rebase sequence unless the environment explicitly prevents git operations; if so, record that limitation explicitly in docs/task_dag_shared.md.
 
 ---
 
