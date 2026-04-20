@@ -18,9 +18,11 @@ from sva_toolkit.sva.ast import (
     CallExpr,
     ClockEdge,
     ClockingEvent,
+    ClockingSequence,
     ControlProperty,
     CycleRange,
     DelaySequence,
+    Ended,
     ExprNode,
     ExprSequence,
     FirstMatchSequence,
@@ -28,7 +30,10 @@ from sva_toolkit.sva.ast import (
     IfElseProperty,
     ImplicationOperator as V3ImplicationOperator,
     ImplicationProperty,
+    Matched,
+    MultiEventClocking,
     Literal,
+    Nexttime,
     OpaqueExpr,
     OpaqueProperty,
     OpaqueSequence,
@@ -39,15 +44,22 @@ from sva_toolkit.sva.ast import (
     PropertyUnaryOperator,
     RepeatOperator,
     RepeatSequence,
+    Restrict,
     SequenceBinary,
     SequenceBinaryOperator,
     SequenceEndedExpr,
     SequenceMatch,
     SequenceMatchItem,
     SequenceNode,
+    Strong,
     TernaryExpr,
     UnaryExpr,
     UnaryProperty,
+    Weak,
+    Within,
+    Always,
+    Eventually,
+    Expect,
 )
 
 
@@ -124,6 +136,12 @@ class SVAStructure:
     builtin_functions: List[BuiltinFunction] = field(default_factory=list)
     delays: List[DelayRange] = field(default_factory=list)
     temporal_operators: List[TemporalOperator] = field(default_factory=list)
+    has_opaque: bool = False
+    opaque_fragments: tuple[str, ...] = ()
+    disable_condition_unverified: bool = False
+    antecedent_unverified: bool = False
+    consequent_unverified: bool = False
+    logic_unverified: bool = False
 
 
 @dataclass(frozen=True)
@@ -176,6 +194,141 @@ class SignalFormatter:
         return f"the {signal_name} signal"
 
 
+UNVERIFIED_PREFIX = "[unverified]"
+
+
+SUPPORTED_SYSTEM_FUNCTIONS = frozenset(
+    {
+        "$rose",
+        "$fell",
+        "$stable",
+        "$changed",
+        "$onehot",
+        "$onehot0",
+        "$isunknown",
+        "$countones",
+        "$countbits",
+        "$past",
+        "$sampled",
+        "$rewind",
+        "$past_gclk",
+        "$future_gclk",
+        "$assertcontrol",
+        "$asserton",
+        "$assertoff",
+        "$assertpassoff",
+        "$assertfailoff",
+        "$assertpassoncontrol",
+        "$assertfailoncontrol",
+        "$assertnonvacuouson",
+        "$assertvacuousoff",
+        "$error",
+        "$fatal",
+        "$warning",
+        "$info",
+        "$bits",
+    }
+)
+
+
+_IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+
+def _format_system_function_argument(arg: str, signal_formatter: SignalFormatter) -> str:
+    if _IDENTIFIER_RE.fullmatch(arg):
+        return signal_formatter.format(arg)
+    return arg
+
+
+def _format_system_function_args(args: list[str], signal_formatter: SignalFormatter) -> str:
+    if not args:
+        return ""
+    rendered = ", ".join(_format_system_function_argument(arg, signal_formatter) for arg in args)
+    return f" with arguments {rendered}"
+
+
+def describe_builtin_function(func: BuiltinFunction, signal_formatter: SignalFormatter) -> str:
+    args = list(func.arguments)
+    primary = _format_system_function_argument(args[0], signal_formatter) if args else "the value"
+    args_suffix = _format_system_function_args(args, signal_formatter)
+
+    if func.name == "$past":
+        if len(args) >= 4:
+            return (
+                f"the value of {primary} from {args[1]} cycles ago when {args[2]} was true "
+                f"under clocking event {args[3]}"
+            )
+        if len(args) >= 3:
+            return f"the value of {primary} from {args[1]} cycles ago when {args[2]} was true"
+        if len(args) >= 2:
+            return f"the value of {primary} from {args[1]} cycles ago"
+        if args:
+            return f"the previous value of {primary}"
+        return "the previous sampled value"
+    if func.name == "$sampled":
+        return f"the sampled value of {primary}" if args else "the sampled value"
+    if func.name == "$rewind":
+        return f"the rewound sampled value of {primary}" if args else "the rewound sampled value"
+    if func.name == "$past_gclk":
+        if len(args) >= 2:
+            return f"the global-clock value of {primary} from {args[1]} ticks ago"
+        return f"the previous global-clock value of {primary}" if args else "the previous global-clock value"
+    if func.name == "$future_gclk":
+        if len(args) >= 2:
+            return f"the global-clock value of {primary} {args[1]} ticks in the future"
+        return f"the future global-clock value of {primary}" if args else "the future global-clock value"
+    if func.name == "$rose":
+        return f"{primary} rises from low to high"
+    if func.name == "$fell":
+        return f"{primary} falls from high to low"
+    if func.name == "$stable":
+        return f"{primary} remains stable"
+    if func.name == "$changed":
+        return f"{primary} changes value"
+    if func.name == "$onehot":
+        return f"exactly one bit of {primary} is high"
+    if func.name == "$onehot0":
+        return f"at most one bit of {primary} is high"
+    if func.name == "$isunknown":
+        return f"{primary} is unknown (X or Z)"
+    if func.name == "$countones":
+        return f"the count of high bits in {primary}"
+    if func.name == "$countbits":
+        return f"the count of selected bits in {primary}"
+    if func.name == "$bits":
+        return f"the number of bits in {primary}"
+    if func.name == "$assertcontrol":
+        return f"assertion control is updated{args_suffix}"
+    if func.name == "$asserton":
+        return f"assertion checking is enabled{args_suffix}"
+    if func.name == "$assertoff":
+        return f"assertion checking is disabled{args_suffix}"
+    if func.name == "$assertpassoff":
+        return f"assertion pass-action reporting is disabled{args_suffix}"
+    if func.name == "$assertfailoff":
+        return f"assertion fail-action reporting is disabled{args_suffix}"
+    if func.name == "$assertpassoncontrol":
+        return f"assertion pass-action control is enabled{args_suffix}"
+    if func.name == "$assertfailoncontrol":
+        return f"assertion fail-action control is enabled{args_suffix}"
+    if func.name == "$assertnonvacuouson":
+        return f"non-vacuous assertion reporting is enabled{args_suffix}"
+    if func.name == "$assertvacuousoff":
+        return f"vacuous assertion reporting is disabled{args_suffix}"
+    if func.name == "$error":
+        return f"an error is reported{args_suffix}"
+    if func.name == "$fatal":
+        return f"a fatal error is reported{args_suffix}"
+    if func.name == "$warning":
+        return f"a warning is reported{args_suffix}"
+    if func.name == "$info":
+        return f"an informational message is reported{args_suffix}"
+
+    if args:
+        return f"{func.name} applied to {', '.join(args)}"
+    return func.name
+
+
 class TemporalFormatter:
     """Small local copy of the V1 delay-to-natural-language helper."""
 
@@ -202,15 +355,25 @@ class SVAASTParser:
 
     def parse(self, sva_code: str) -> SVAStructure:
         spec = parse_property_text(sva_code)
+        return self._build_structure(spec, sva_code)
+
+    def _build_structure(self, spec: PropertySpec, sva_code: str) -> SVAStructure:
         collector = _StructureCollector()
         collector.collect_spec(spec)
+        clock_signal, clock_edge = self._primary_clock(spec.clocking)
 
-        implication_type, antecedent, consequent = self._extract_implication(spec.body)
+        implication_type, antecedent, consequent, antecedent_unverified, consequent_unverified = self._extract_implication(
+            spec.body
+        )
         disable_condition = emit_expr(spec.disable_iff) if spec.disable_iff is not None else None
         reset_signal, reset_active_low = self._infer_reset(spec.disable_iff, disable_condition)
 
         if spec.clocking is not None:
-            collector.mark_signal(spec.clocking.signal.name, is_clock=True)
+            if isinstance(spec.clocking, ClockingEvent):
+                collector.mark_signal(spec.clocking.signal.name, is_clock=True)
+            elif isinstance(spec.clocking, MultiEventClocking):
+                for event in spec.clocking.events:
+                    collector.mark_signal(event.signal.name, is_clock=True)
 
         if reset_signal is not None:
             collector.mark_signal(reset_signal, is_reset=True)
@@ -224,8 +387,8 @@ class SVAASTParser:
             is_assertion=not is_assumption and not is_cover,
             is_assumption=is_assumption,
             is_cover=is_cover,
-            clock_signal=spec.clocking.signal.name if spec.clocking is not None else None,
-            clock_edge=(spec.clocking.edge.value if spec.clocking is not None else ClockEdge.POSEDGE.value),
+            clock_signal=clock_signal,
+            clock_edge=clock_edge,
             reset_signal=reset_signal,
             reset_active_low=reset_active_low,
             disable_condition=disable_condition,
@@ -236,20 +399,42 @@ class SVAASTParser:
             builtin_functions=collector.builtin_functions,
             delays=collector.delays,
             temporal_operators=collector.temporal_operators,
+            has_opaque=collector.has_opaque or _property_contains_opaque(spec.body) or _expr_contains_opaque(spec.disable_iff),
+            opaque_fragments=tuple(collector.opaque_fragments),
+            disable_condition_unverified=_expr_contains_opaque(spec.disable_iff),
+            antecedent_unverified=antecedent_unverified,
+            consequent_unverified=consequent_unverified,
+            logic_unverified=_property_contains_opaque(spec.body),
         )
+
+    def _primary_clock(self, clocking: ClockingEvent | MultiEventClocking | None) -> tuple[str | None, str]:
+        if isinstance(clocking, ClockingEvent):
+            return clocking.signal.name, clocking.edge.value
+        if isinstance(clocking, MultiEventClocking) and clocking.events:
+            first = clocking.events[0]
+            return first.signal.name, first.edge.value
+        return None, ClockEdge.POSEDGE.value
 
     def _extract_property_body(self, sva_code: str) -> str:
         return emit_property_body(parse_property_text(sva_code).body)
 
-    def _extract_implication(self, body: PropertyNode) -> tuple[ImplicationType, str | None, str | None]:
+    def _extract_implication(
+        self, body: PropertyNode
+    ) -> tuple[ImplicationType, str | None, str | None, bool, bool]:
         if isinstance(body, ImplicationProperty):
             implication_type = (
                 ImplicationType.OVERLAPPING
                 if body.op is V3ImplicationOperator.OVERLAPPED
                 else ImplicationType.NON_OVERLAPPING
             )
-            return implication_type, emit_sequence(body.antecedent), emit_property_body(body.consequent)
-        return ImplicationType.NONE, emit_property_body(body), None
+            return (
+                implication_type,
+                emit_sequence(body.antecedent),
+                emit_property_body(body.consequent),
+                _sequence_contains_opaque(body.antecedent),
+                _property_contains_opaque(body.consequent),
+            )
+        return ImplicationType.NONE, emit_property_body(body), None, _property_contains_opaque(body), False
 
     def _infer_reset(self, disable_iff: ExprNode | None, disable_text: str | None) -> tuple[str | None, bool]:
         if disable_iff is None or disable_text is None:
@@ -284,6 +469,7 @@ class _StructureCollector:
         self.delays: list[DelayRange] = []
         self.temporal_operators: list[TemporalOperator] = []
         self._seen_temporal_ops: set[TemporalOperator] = set()
+        self.opaque_fragments: list[str] = []
 
     @property
     def signals(self) -> list[Signal]:
@@ -303,7 +489,11 @@ class _StructureCollector:
 
     def collect_spec(self, spec: PropertySpec) -> None:
         if spec.clocking is not None:
-            self.collect_clocking(spec.clocking)
+            if isinstance(spec.clocking, ClockingEvent):
+                self.collect_clocking(spec.clocking)
+            elif isinstance(spec.clocking, MultiEventClocking):
+                for event in spec.clocking.events:
+                    self.collect_clocking(event)
         if spec.disable_iff is not None:
             self.collect_expr(spec.disable_iff)
         self.collect_property(spec.body)
@@ -320,6 +510,15 @@ class _StructureCollector:
             if node.op is PropertyUnaryOperator.NOT:
                 self._add_temporal_operator(TemporalOperator.NOT)
             self.collect_property(node.operand)
+            return
+        if isinstance(node, (Nexttime, Always, Eventually, Restrict, Expect)):
+            self.collect_property(node.operand)
+            return
+        if isinstance(node, (Strong, Weak)):
+            if isinstance(node.operand, _SEQUENCE_NODE_TYPES):
+                self.collect_sequence(node.operand)
+            else:
+                self.collect_property(node.operand)
             return
         if isinstance(node, PropertyBinary):
             if node.op is PropertyBinaryOperator.AND:
@@ -341,13 +540,21 @@ class _StructureCollector:
             self.collect_property(node.operand)
             return
         if isinstance(node, OpaqueProperty):
-            self.collect_text(node.text)
+            self.collect_opaque(node.text)
             return
         self.collect_sequence(node)
 
     def collect_sequence(self, node: SequenceNode) -> None:
         if isinstance(node, ExprSequence):
             self.collect_expr(node.expr)
+            return
+        if isinstance(node, ClockingSequence):
+            if isinstance(node.clocking, ClockingEvent):
+                self.collect_clocking(node.clocking)
+            elif isinstance(node.clocking, MultiEventClocking):
+                for event in node.clocking.events:
+                    self.collect_clocking(event)
+            self.collect_sequence(node.body)
             return
         if isinstance(node, DelaySequence):
             self._add_temporal_operator(TemporalOperator.DELAY)
@@ -365,6 +572,17 @@ class _StructureCollector:
             elif node.op is RepeatOperator.GOTO:
                 self._add_temporal_operator(TemporalOperator.REPETITION_GOTO)
             self.collect_sequence(node.body)
+            return
+        if isinstance(node, Within):
+            self._add_temporal_operator(TemporalOperator.WITHIN)
+            self.collect_sequence(node.left)
+            self.collect_sequence(node.right)
+            return
+        if isinstance(node, Matched):
+            self.collect_sequence(node.sequence)
+            return
+        if isinstance(node, Ended):
+            self.collect_sequence(node.sequence)
             return
         if isinstance(node, SequenceBinary):
             operator = {
@@ -388,7 +606,7 @@ class _StructureCollector:
             self.collect_sequence(node.body)
             return
         if isinstance(node, OpaqueSequence):
-            self.collect_text(node.text)
+            self.collect_opaque(node.text)
             return
 
     def collect_match_item(self, node: SequenceMatchItem) -> None:
@@ -402,7 +620,7 @@ class _StructureCollector:
         if isinstance(node, Literal):
             return
         if isinstance(node, OpaqueExpr):
-            self.collect_text(node.text)
+            self.collect_opaque(node.text)
             return
         if isinstance(node, UnaryExpr):
             self.collect_expr(node.operand)
@@ -426,14 +644,10 @@ class _StructureCollector:
         if isinstance(node, SequenceEndedExpr):
             self.collect_sequence(node.sequence)
 
-    def collect_text(self, text: str) -> None:
-        for name in re.findall(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", text):
-            if name in {"posedge", "negedge", "disable", "iff", "and", "or", "not", "if", "else"}:
-                continue
-            self.mark_signal(name)
-        for match in re.finditer(r"(\$[a-zA-Z_][a-zA-Z0-9_]*)\(([^()]*)\)", text):
-            args = [part.strip() for part in match.group(2).split(",") if part.strip()]
-            self.builtin_functions.append(BuiltinFunction(name=match.group(1), arguments=args))
+    def collect_opaque(self, text: str) -> None:
+        cleaned = text.strip()
+        if cleaned:
+            self.opaque_fragments.append(cleaned)
 
     def _add_temporal_operator(self, operator: TemporalOperator) -> None:
         if operator in self._seen_temporal_ops:
@@ -441,10 +655,16 @@ class _StructureCollector:
         self._seen_temporal_ops.add(operator)
         self.temporal_operators.append(operator)
 
+    @property
+    def has_opaque(self) -> bool:
+        return bool(self.opaque_fragments)
+
 
 def _collect_identifiers_from_expr(node: ExprNode, out: list[str]) -> None:
     if isinstance(node, Identifier):
         out.append(node.name)
+    elif isinstance(node, OpaqueExpr):
+        return
     elif isinstance(node, UnaryExpr):
         _collect_identifiers_from_expr(node.operand, out)
     elif isinstance(node, BinaryExpr):
@@ -479,6 +699,102 @@ def _integer_text(node: ExprNode | None) -> int | None:
     if isinstance(node, Identifier) and node.name.isdigit():
         return int(node.name)
     return None
+
+
+_SEQUENCE_NODE_TYPES = (
+    ExprSequence,
+    DelaySequence,
+    RepeatSequence,
+    Within,
+    Matched,
+    Ended,
+    SequenceBinary,
+    SequenceMatch,
+    ClockingSequence,
+    FirstMatchSequence,
+    OpaqueSequence,
+)
+
+
+def _expr_contains_opaque(node: ExprNode | None) -> bool:
+    if node is None:
+        return False
+    if isinstance(node, OpaqueExpr):
+        return True
+    if isinstance(node, UnaryExpr):
+        return _expr_contains_opaque(node.operand)
+    if isinstance(node, BinaryExpr):
+        return _expr_contains_opaque(node.left) or _expr_contains_opaque(node.right)
+    if isinstance(node, TernaryExpr):
+        return (
+            _expr_contains_opaque(node.condition)
+            or _expr_contains_opaque(node.when_true)
+            or _expr_contains_opaque(node.when_false)
+        )
+    if isinstance(node, CallExpr):
+        return any(_expr_contains_opaque(arg) for arg in node.args)
+    if isinstance(node, SequenceEndedExpr):
+        return _sequence_contains_opaque(node.sequence)
+    return False
+
+
+def _sequence_contains_opaque(node: SequenceNode | None) -> bool:
+    if node is None:
+        return False
+    if isinstance(node, OpaqueSequence):
+        return True
+    if isinstance(node, ExprSequence):
+        return _expr_contains_opaque(node.expr)
+    if isinstance(node, DelaySequence):
+        return _sequence_contains_opaque(node.left) or _sequence_contains_opaque(node.right)
+    if isinstance(node, RepeatSequence):
+        return _sequence_contains_opaque(node.body) or _expr_contains_opaque(node.count.minimum) or _expr_contains_opaque(node.count.maximum)
+    if isinstance(node, Within):
+        return _sequence_contains_opaque(node.left) or _sequence_contains_opaque(node.right)
+    if isinstance(node, Matched):
+        return _sequence_contains_opaque(node.sequence)
+    if isinstance(node, Ended):
+        return _sequence_contains_opaque(node.sequence)
+    if isinstance(node, SequenceBinary):
+        return _sequence_contains_opaque(node.left) or _sequence_contains_opaque(node.right)
+    if isinstance(node, SequenceMatch):
+        return _sequence_contains_opaque(node.body) or any(_expr_contains_opaque(item.rvalue) for item in node.items)
+    if isinstance(node, ClockingSequence):
+        return _sequence_contains_opaque(node.body)
+    if isinstance(node, FirstMatchSequence):
+        return _sequence_contains_opaque(node.body)
+    return False
+
+
+def _property_contains_opaque(node: PropertyNode | None) -> bool:
+    if node is None:
+        return False
+    if isinstance(node, OpaqueProperty):
+        return True
+    if isinstance(node, (Strong, Weak)):
+        operand = node.operand
+        if isinstance(operand, _SEQUENCE_NODE_TYPES):
+            return _sequence_contains_opaque(operand)
+        return _property_contains_opaque(operand)
+    if isinstance(node, UnaryProperty):
+        return _property_contains_opaque(node.operand)
+    if isinstance(node, (Nexttime, Always, Eventually, Restrict, Expect)):
+        return _property_contains_opaque(node.operand)
+    if isinstance(node, ImplicationProperty):
+        return _sequence_contains_opaque(node.antecedent) or _property_contains_opaque(node.consequent)
+    if isinstance(node, PropertyBinary):
+        return _property_contains_opaque(node.left) or _property_contains_opaque(node.right)
+    if isinstance(node, IfElseProperty):
+        return (
+            _expr_contains_opaque(node.condition)
+            or _property_contains_opaque(node.when_true)
+            or _property_contains_opaque(node.when_false)
+        )
+    if isinstance(node, ControlProperty):
+        return _expr_contains_opaque(node.condition) or _property_contains_opaque(node.operand)
+    if isinstance(node, _SEQUENCE_NODE_TYPES):
+        return _sequence_contains_opaque(node)
+    return False
 
 
 @dataclass
@@ -542,16 +858,7 @@ class SVADTranslator:
     Translate SVA code into a markdown SVAD template.
     """
 
-    _SYS_FUNC_TEMPLATES = {
-        "$rose": "{sig} rises from low to high",
-        "$fell": "{sig} falls from high to low",
-        "$stable": "{sig} remains stable",
-        "$changed": "{sig} changes value",
-        "$onehot": "exactly one bit of {sig} is high",
-        "$onehot0": "at most one bit of {sig} is high",
-        "$isunknown": "{sig} is unknown (X or Z)",
-        "$countones": "the count of high bits in {sig}",
-    }
+    SUPPORTED_SYSTEM_FUNCTIONS = SUPPORTED_SYSTEM_FUNCTIONS
 
     def __init__(
         self,
@@ -578,9 +885,10 @@ class SVADTranslator:
     def _build_symbolic_svad(self, structure: SVAStructure) -> SymbolicSVAD:
         scope = None
         if structure.disable_condition:
-            scope = (
+            scope = self._mark_unverified(
                 "This property is active unless "
-                f"{structure.disable_condition} is asserted."
+                f"{structure.disable_condition} is asserted.",
+                structure.disable_condition_unverified,
             )
 
         self._seq_registry: Dict[str, str] = {}
@@ -621,6 +929,7 @@ class SVADTranslator:
                 sys_symbol_by_key,
                 structure.signals,
             )
+            exp_desc = self._mark_unverified(exp_desc, structure.antecedent_unverified)
             exp_defs.append((trigger_symbol, exp_desc))
             exp_index += 1
 
@@ -631,6 +940,7 @@ class SVADTranslator:
                 sys_symbol_by_key,
                 structure.signals,
             )
+            exp_desc = self._mark_unverified(exp_desc, structure.consequent_unverified)
             exp_defs.append((outcome_symbol, exp_desc))
             exp_index += 1
 
@@ -662,7 +972,7 @@ class SVADTranslator:
     ) -> str:
         if structure.implication_type == ImplicationType.NONE:
             property_body = self.parser._extract_property_body(structure.raw_code)
-            return property_body or structure.raw_code
+            return self._mark_unverified(property_body or structure.raw_code, structure.logic_unverified)
 
         timing = "in the same cycle"
         if structure.implication_type == ImplicationType.NON_OVERLAPPING:
@@ -676,23 +986,7 @@ class SVADTranslator:
         )
 
     def _describe_builtin(self, func: BuiltinFunction) -> str:
-        args = func.arguments
-        if not args:
-            return ""
-
-        signal_desc = self.signal_formatter.format(args[0])
-
-        if func.name == "$past":
-            if len(args) >= 2:
-                return f"the value of {signal_desc} from {args[1]} cycles ago"
-            return f"the previous value of {signal_desc}"
-
-        template = self._SYS_FUNC_TEMPLATES.get(func.name)
-        if template:
-            return template.format(sig=signal_desc)
-
-        args_text = ", ".join(args)
-        return f"{func.name} applied to {args_text}"
+        return describe_builtin_function(func, self.signal_formatter)
 
     def _render_expression(
         self,
@@ -1320,6 +1614,14 @@ class SVADTranslator:
         text = text.replace(" ,", ",")
         return text.strip()
 
+    def _mark_unverified(self, text: str, enabled: bool) -> str:
+        if not enabled:
+            return text
+        normalized = self._cleanup_text(text)
+        if normalized.startswith(UNVERIFIED_PREFIX):
+            return normalized
+        return f"{UNVERIFIED_PREFIX} {normalized}"
+
     def _render_markdown(self, structure: SVAStructure, symbolic: SymbolicSVAD) -> str:
         lines: List[str] = []
 
@@ -1339,6 +1641,13 @@ class SVADTranslator:
             lines.append("Definitions:")
             for definition in symbolic.definitions:
                 lines.append(f"- {definition}")
+
+        if structure.has_opaque:
+            lines.append("")
+            lines.append("4. Confidence:")
+            lines.append(
+                f"{UNVERIFIED_PREFIX} Some fragments were emitted from opaque parser fallback nodes and should be treated as low-confidence passthrough text."
+            )
 
         return "\n".join(lines).strip()
 

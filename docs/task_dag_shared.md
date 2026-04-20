@@ -130,7 +130,7 @@ flowchart TD
 | T06     | Codex-T06      | DONE        | 100        | 2026-04-20  | —        | Expanded lexer keyword/operator coverage, added placeholder AST nodes, and passed `pytest -q sva-toolkit/tests/sva` plus `ruff check` |
 | T07     | Codex-T07      | DONE        | 100        | 2026-04-20  | —        | Expanded parser/emitter coverage, surfaced opaque diagnostics, and passed `pytest -q tests/sva` plus `ruff check src tests` |
 | T08     | —              | NOT_STARTED | 0          | 2026-04-19  | T05, T07 | Wait for T05 and T07 DONE, then remove hard-coded clock/reset defaults      |
-| T09     | —              | NOT_STARTED | 0          | 2026-04-19  | T07      | Wait for T07 DONE, then fill NL templates and add uncertainty markers       |
+| T09     | Codex-T09      | DONE        | 100        | 2026-04-20  | —        | Added describe-system-function templates, `[unverified]` opaque markers, CoT low-confidence surfacing, and passing describe regression coverage |
 | T10     | Codex-T10      | DONE        | 100        | 2026-04-20  | —        | Replaced the regex table with a grammar parser, added line:col diagnostics, and locked example output hashes plus negative coverage |
 | T11     | —              | NOT_STARTED | 0          | 2026-04-19  | T02      | Wait for T02 DONE, then build `ExtractionReport`                            |
 | T12     | —              | NOT_STARTED | 0          | 2026-04-19  | T02      | Wait for T02 DONE, then guard cache and add LLM retry                       |
@@ -400,4 +400,5 @@ Append new entries at the bottom. Never rewrite history.
 - 2026-04-20 19:00 — T07 — Codex-T07 — NOT_STARTED -> IN_PROGRESS — Claimed parser/emitter expansion; auditing T06 AST placeholders, parser/emitter scaffolds, and diagnostics integration points.
 - 2026-04-20 19:09 — T07 — Codex-T07 — scope note — Touching `sva/lexer.py` minimally to add brace-token support required for `inside` / `dist`, which cannot be parsed from the existing token stream.
 - 2026-04-20 19:42 — T07 — Codex-T07 — IN_PROGRESS -> DONE — Landed parser/emitter coverage for temporal and structural constructs, added visible opaque fallback diagnostics, verified `examples/sva` with `opaque_count == 0`, and passed `pytest -q tests/sva` plus `ruff check src tests`.
+- 2026-04-20 20:21 — T09 — Codex-T09 — DONE — Expanded describe-system-function templates, surfaced `[unverified]` opaque fragments in SVAD and low-confidence CoT output, added examples-tree coverage plus uncertainty regressions, and passed targeted pytest + ruff.
 - 2026-04-20 20:35 — T10 — Codex-T10 — NOT_STARTED -> DONE — Replaced the timing regex parser with a tokenized recursive-descent grammar, added `TimingSyntaxError` line:col diagnostics plus hash-comment/multiline coverage, and passed `pytest -q sva-toolkit/tests/timing`, integration timing tests, and `ruff check` on touched files.

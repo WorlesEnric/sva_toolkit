@@ -43,3 +43,18 @@ def test_cot_builder_exposes_structured_sections() -> None:
     assert any("disable iff" in section.content.lower() or "rst_n" in section.content for section in sections)
     assert any("$rose" in section.content for section in sections)
     assert any("$stable" in section.content for section in sections)
+
+
+def test_cot_builder_describes_new_system_function_templates() -> None:
+    builder = SVACoTBuilder()
+
+    rendered = builder.build(
+        """
+        assert property (@(posedge clk)
+            $sampled(req) |=> ($warning("ack missing") || $past(ack, 2)));
+        """
+    )
+
+    assert "sampled value of the request (req) signal" in rendered
+    assert 'a warning is reported with arguments "ack missing"' in rendered
+    assert "Reference to `ack` from 2 cycles ago" in rendered

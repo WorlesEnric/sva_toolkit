@@ -13,9 +13,12 @@ from typing import List, Optional
 from sva_toolkit.describe.translator import (
     DelayRange,
     ImplicationType,
+    SignalFormatter,
     SVAASTParser,
     SVAStructure,
     TemporalOperator,
+    UNVERIFIED_PREFIX,
+    describe_builtin_function,
 )
 
 
@@ -33,21 +36,6 @@ class SVACoTBuilder:
     Uses template matching to construct structured reasoning chains
     based on the SVA AST structure.
     """
-
-    # Built-in function descriptions
-    BUILTIN_DESCRIPTIONS = {
-        "$rose": "Signal transitions from 0 to 1 (rising edge)",
-        "$fell": "Signal transitions from 1 to 0 (falling edge)", 
-        "$stable": "Signal value remains unchanged from previous cycle",
-        "$changed": "Signal value changes from previous cycle",
-        "$past": "Reference to signal value from previous cycles",
-        "$onehot": "Exactly one bit is set in the signal",
-        "$onehot0": "At most one bit is set (all zeros allowed)",
-        "$isunknown": "Signal contains unknown (X) values",
-        "$countones": "Count the number of 1 bits in the signal",
-        "$sampled": "Sampled value of signal in the current clock cycle",
-        "$bits": "Number of bits in the signal",
-    }
 
     # Temporal operator descriptions
     TEMPORAL_DESCRIPTIONS = {
@@ -73,6 +61,7 @@ class SVACoTBuilder:
             parser: Optional SVAASTParser instance
         """
         self.parser = parser or SVAASTParser()
+        self.signal_formatter = SignalFormatter()
 
     def build(self, sva_code: str) -> str:
         """
@@ -88,14 +77,7 @@ class SVACoTBuilder:
         structure = self.parser.parse(sva_code)
         
         # Build each section
-        sections = [
-            self._build_header(structure),
-            self._build_step1_interface(structure),
-            self._build_step2_semantic(structure),
-            self._build_step3_sequence(structure),
-            self._build_step4_property(structure),
-            self._build_step5_final(structure),
-        ]
+        sections = self._build_sections(structure)
         
         return "\n\n".join(sections)
 
@@ -109,16 +91,24 @@ class SVACoTBuilder:
         Returns:
             Markdown-formatted Chain-of-Thought
         """
-        sections = [
-            self._build_header(structure),
-            self._build_step1_interface(structure),
-            self._build_step2_semantic(structure),
-            self._build_step3_sequence(structure),
-            self._build_step4_property(structure),
-            self._build_step5_final(structure),
-        ]
+        sections = self._build_sections(structure)
         
         return "\n\n".join(sections)
+
+    def _build_sections(self, structure: SVAStructure) -> List[str]:
+        sections = [self._build_header(structure)]
+        if structure.has_opaque:
+            sections.append(self._build_uncertainty(structure))
+        sections.extend(
+            [
+                self._build_step1_interface(structure),
+                self._build_step2_semantic(structure),
+                self._build_step3_sequence(structure),
+                self._build_step4_property(structure),
+                self._build_step5_final(structure),
+            ]
+        )
+        return sections
 
     def _build_header(self, structure: SVAStructure) -> str:
         """Build the header section."""
@@ -131,6 +121,14 @@ class SVACoTBuilder:
         name = structure.property_name or "Unnamed Property"
         
         return f"# SVA Generation Chain-of-Thought\n\n**Property:** {name}\n**Type:** {prop_type}"
+
+    def _build_uncertainty(self, structure: SVAStructure) -> str:
+        del structure
+        return (
+            "## Confidence & Uncertainty\n\n"
+            f"{UNVERIFIED_PREFIX} This explanation includes one or more opaque parser fallback fragments. "
+            "Treat any tagged fragment as low-confidence passthrough text rather than a fully verified semantic expansion."
+        )
 
     def _build_step1_interface(self, structure: SVAStructure) -> str:
         """Build Step 1: Interface & Clock Domain Analysis."""
@@ -176,15 +174,19 @@ class SVACoTBuilder:
         # Boolean conditions
         lines.append("\n* **Boolean Conditions:**")
         if structure.antecedent:
-            lines.append(f"    * Trigger condition: `{structure.antecedent}`")
+            lines.append(
+                f"    * Trigger condition: `{self._mark_unverified(structure.antecedent, structure.antecedent_unverified)}`"
+            )
         if structure.consequent:
-            lines.append(f"    * Response condition: `{structure.consequent}`")
+            lines.append(
+                f"    * Response condition: `{self._mark_unverified(structure.consequent, structure.consequent_unverified)}`"
+            )
         
         # Built-in functions
         if structure.builtin_functions:
             lines.append("\n* **Edge/Change Detection & Built-in Functions:**")
             for func in structure.builtin_functions:
-                desc = self.BUILTIN_DESCRIPTIONS.get(func.name, "Custom function")
+                desc = describe_builtin_function(func, self.signal_formatter)
                 args_str = ", ".join(func.arguments) if func.arguments else ""
                 lines.append(f"    * `{func.name}({args_str})`: {desc}")
         
@@ -208,26 +210,30 @@ class SVACoTBuilder:
         if structure.antecedent:
             lines.append("\n* **Sequence A (Trigger/Antecedent):**")
             lines.append("    * Description: The triggering condition that initiates property evaluation")
-            lines.append(f"    * Logic: `{structure.antecedent}`")
+            lines.append(
+                f"    * Logic: `{self._mark_unverified(structure.antecedent, structure.antecedent_unverified)}`"
+            )
             
             # Analyze antecedent for temporal constructs
             ant_delays = self._extract_delays_from_expr(structure.antecedent)
-            if ant_delays:
+            if ant_delays and not structure.antecedent_unverified:
                 lines.append(f"    * Timing: {self._describe_delays(ant_delays)}")
         
         # Consequent sequence
         if structure.consequent:
             lines.append("\n* **Sequence B (Response/Consequent):**")
             lines.append("    * Description: The expected behavior when trigger occurs")
-            lines.append(f"    * Logic: `{structure.consequent}`")
+            lines.append(
+                f"    * Logic: `{self._mark_unverified(structure.consequent, structure.consequent_unverified)}`"
+            )
             
             # Analyze consequent for temporal constructs
             cons_delays = self._extract_delays_from_expr(structure.consequent)
-            if cons_delays:
+            if cons_delays and not structure.consequent_unverified:
                 lines.append(f"    * Timing: {self._describe_delays(cons_delays)}")
             
             # Check for nested logic
-            if self._has_nested_logic(structure.consequent):
+            if not structure.consequent_unverified and self._has_nested_logic(structure.consequent):
                 lines.append("    * **Handling Nesting:** Complex nested temporal logic detected")
         
         # Temporal operators used
@@ -255,7 +261,9 @@ class SVACoTBuilder:
         # Disable condition
         lines.append("\n* **Disable Condition:**")
         if structure.disable_condition:
-            lines.append(f"    * `disable iff ({structure.disable_condition})`")
+            lines.append(
+                f"    * `{self._mark_unverified(f'disable iff ({structure.disable_condition})', structure.disable_condition_unverified)}`"
+            )
             if structure.reset_signal:
                 active = "low" if structure.reset_active_low else "high"
                 lines.append(f"    * Property is disabled when reset `{structure.reset_signal}` is active {active}")
@@ -265,12 +273,19 @@ class SVACoTBuilder:
         # Assertion structure
         lines.append("\n* **Assertion Structure:**")
         if structure.clock_signal and structure.implication_type.value:
-            lines.append(f"    * `@({structure.clock_edge} {structure.clock_signal}) "
-                        f"{structure.antecedent} {structure.implication_type.value} {structure.consequent}`")
+            rendered = (
+                f"@({structure.clock_edge} {structure.clock_signal}) "
+                f"{structure.antecedent} {structure.implication_type.value} {structure.consequent}"
+            )
+            lines.append(
+                f"    * `{self._mark_unverified(rendered, structure.antecedent_unverified or structure.consequent_unverified)}`"
+            )
         elif structure.clock_signal:
             # Simple property without implication
             body = structure.antecedent or structure.consequent or "property_expression"
-            lines.append(f"    * `@({structure.clock_edge} {structure.clock_signal}) {body}`")
+            lines.append(
+                f"    * `{self._mark_unverified(f'@({structure.clock_edge} {structure.clock_signal}) {body}', structure.logic_unverified)}`"
+            )
         
         return "\n".join(lines)
 
@@ -364,12 +379,22 @@ class SVACoTBuilder:
             List of CoTSection objects
         """
         structure = self.parser.parse(sva_code)
-        
-        return [
-            CoTSection("Header", self._build_header(structure)),
-            CoTSection("Interface & Clock Domain Analysis", self._build_step1_interface(structure)),
-            CoTSection("Semantic Mapping", self._build_step2_semantic(structure)),
-            CoTSection("Sequence Construction", self._build_step3_sequence(structure)),
-            CoTSection("Property Assembly", self._build_step4_property(structure)),
-            CoTSection("Final SVA Code", self._build_step5_final(structure)),
-        ]
+
+        sections = [CoTSection("Header", self._build_header(structure))]
+        if structure.has_opaque:
+            sections.append(CoTSection("Confidence & Uncertainty", self._build_uncertainty(structure)))
+        sections.extend(
+            [
+                CoTSection("Interface & Clock Domain Analysis", self._build_step1_interface(structure)),
+                CoTSection("Semantic Mapping", self._build_step2_semantic(structure)),
+                CoTSection("Sequence Construction", self._build_step3_sequence(structure)),
+                CoTSection("Property Assembly", self._build_step4_property(structure)),
+                CoTSection("Final SVA Code", self._build_step5_final(structure)),
+            ]
+        )
+        return sections
+
+    def _mark_unverified(self, text: str, enabled: bool) -> str:
+        if not enabled or text.startswith(UNVERIFIED_PREFIX):
+            return text
+        return f"{UNVERIFIED_PREFIX} {text}"
