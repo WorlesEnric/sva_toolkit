@@ -6,13 +6,16 @@ def test_multi_sva_bundling_temporal_unification():
     sva1 = "assert property (@(posedge clk) req |-> ##1 ack);"
     sva2 = "assert property (@(posedge clk) req |-> ##2 done);"
     
-    doc1 = extract_sva_scenario(sva1, name="sva1")
-    doc2 = extract_sva_scenario(sva2, name="sva2")
+    doc1, report1 = extract_sva_scenario(sva1, name="sva1")
+    doc2, report2 = extract_sva_scenario(sva2, name="sva2")
     
     # Bundle them with a lower threshold to ensure they are merged despite 33% overlap
-    bundled = bundle_sva_scenarios([doc1, doc2], overlap_threshold=0.3)
+    bundled, bundle_report = bundle_sva_scenarios([doc1, doc2], overlap_threshold=0.3)
     
     assert len(bundled) == 1
+    assert report1.worst_status().value == "exact"
+    assert report2.worst_status().value == "exact"
+    assert bundle_report.worst_status().value == "exact"
     doc = bundled[0]
     
     # Count anchors that represent 'req'

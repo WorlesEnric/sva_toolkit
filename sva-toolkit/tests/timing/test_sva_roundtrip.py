@@ -42,9 +42,10 @@ def _normalized_emitted_properties(text: str) -> tuple[str, ...]:
     ],
 )
 def test_extract_emit_roundtrip_preserves_exact_property_surface(source_sva: str) -> None:
-    document = extract_sva_scenario(source_sva)
+    document, report = extract_sva_scenario(source_sva)
 
     assert document.effective_status == ExtractionStatus.EXACT
+    assert report.worst_status() == ExtractionStatus.EXACT
 
     emitted = emit_parameterized_sva(document)
 
@@ -68,9 +69,10 @@ def test_extract_emit_roundtrip_uses_conservative_approximation_for_lossy_cases(
     source_sva: str,
     expected_approximation: tuple[str, ...],
 ) -> None:
-    document = extract_sva_scenario(source_sva)
+    document, report = extract_sva_scenario(source_sva)
 
     assert document.effective_status == ExtractionStatus.LOSSY
+    assert report.worst_status() == ExtractionStatus.LOSSY
 
     emitted = emit_parameterized_sva(document, allow_lossy=True)
 

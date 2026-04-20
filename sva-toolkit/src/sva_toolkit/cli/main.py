@@ -118,20 +118,22 @@ def _patch_witness_defaults(depth: int, timeout: int) -> None:
 
 def _extract_sva_documents(input_file: str, *, depth: int, timeout: int):
     from sva_toolkit.formal.parse import split_property_texts
-    from sva_toolkit.timing.bridge.from_sva import bundle_sva_scenarios, extract_sva_scenario
+    from sva_toolkit.timing.bridge.from_sva import bundle_sva_scenarios, extract_sva_scenarios
+    from sva_toolkit.timing.bridge.status import merge_extraction_reports
 
     _patch_witness_defaults(depth, timeout)
     property_texts = split_property_texts(Path(input_file).read_text(encoding="utf-8"))
-    documents = tuple(extract_sva_scenario(text) for text in property_texts)
+    documents, report = extract_sva_scenarios(property_texts)
     if len(documents) <= 1:
-        return documents
-    return bundle_sva_scenarios(
+        return documents, report
+    bundled_documents, bundle_report = bundle_sva_scenarios(
         documents,
         overlap_threshold=0.0,
         max_signals=max(10, sum(len(document.signals) for document in documents)),
         max_properties=max(5, sum(len(document.properties) for document in documents)),
         max_chains=max(3, len(documents)),
     )
+    return bundled_documents, merge_extraction_reports(report, bundle_report)
 
 
 def _build_dataset_builder(model: str | None, workers: int):
@@ -301,9 +303,12 @@ def timing_emit_sva(input_file: str, output: str | None, allow_lossy: bool) -> N
 @_handle_cli_errors
 def timing_extract_sva(input_file: str, output: str | None, depth: int, timeout: int) -> None:
     """Extract timing DSL scenarios from an SVA source file."""
+    from sva_toolkit.timing.bridge.status import summarize_report
     from sva_toolkit.timing.bridge.to_dsl import emit_timing_dsl
 
-    documents = _extract_sva_documents(input_file, depth=depth, timeout=timeout)
+    documents, report = _extract_sva_documents(input_file, depth=depth, timeout=timeout)
+    if report.worst_status().value != "exact":
+        click.echo(f"WARNING {summarize_report(report)}", err=True)
     rendered = "\n\n".join(emit_timing_dsl(document) for document in documents)
     _write_text_output(output, rendered)
 
@@ -315,15 +320,19 @@ def timing_extract_sva(input_file: str, output: str | None, depth: int, timeout:
 def timing_bundle_sva(input_files: tuple[str, ...], output: str | None) -> None:
     """Bundle related SVA files into grouped timing scenarios."""
     from sva_toolkit.timing.bridge.from_sva import bundle_sva_scenarios
+    from sva_toolkit.timing.bridge.status import merge_extraction_reports, summarize_report
     from sva_toolkit.timing.bridge.to_dsl import emit_timing_dsl
 
     if not input_files:
         raise click.ClickException("at least one input file is required")
 
-    scenarios = tuple(
-        document for input_file in input_files for document in _extract_sva_documents(input_file, depth=32, timeout=60)
-    )
-    rendered = "\n\n".join(emit_timing_dsl(document) for document in bundle_sva_scenarios(scenarios))
+    extracted = tuple(_extract_sva_documents(input_file, depth=32, timeout=60) for input_file in input_files)
+    scenarios = tuple(document for documents, _ in extracted for document in documents)
+    bundled_scenarios, bundle_report = bundle_sva_scenarios(scenarios)
+    report = merge_extraction_reports(*(report for _, report in extracted), bundle_report)
+    if report.worst_status().value != "exact":
+        click.echo(f"WARNING {summarize_report(report)}", err=True)
+    rendered = "\n\n".join(emit_timing_dsl(document) for document in bundled_scenarios)
     _write_text_output(output, rendered)
 
 

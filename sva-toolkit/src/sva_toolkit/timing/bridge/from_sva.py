@@ -8,6 +8,7 @@ from typing import Iterable, List, Sequence
 
 from sva_toolkit.sva.analysis import CollectBoundNamesVisitor, ContainsNodeKindVisitor
 from sva_toolkit.sva.emitter import emit_expr, emit_property_body, emit_sequence
+from sva_toolkit.sva.errors import SvaSyntaxError
 from sva_toolkit.sva.parser import parse_property_body
 from sva_toolkit.sva.transforms import RenameIdentifiersTransformer
 from sva_toolkit.timing.bridge.solver import CEGSolver
@@ -15,6 +16,7 @@ from sva_toolkit.timing.bridge.ebmc_witness import (
     EbmcWitnessSynthesizer,
     refine_document_from_witness,
 )
+from sva_toolkit.timing.bridge.status import ExtractionReport
 from sva_toolkit.sva.visitors import NodeVisitor
 from sva_toolkit.timing.core.graph import CanonicalEventGraph, TimeRange, CEGNode
 from sva_toolkit.sva.ast import (
@@ -450,8 +452,12 @@ def _extract_implication_from_ast(body) -> tuple[str, str, str] | None:
     return body.op.value, emit_sequence(body.antecedent), emit_property_body(body.consequent)
 
 
-def extract_sva_scenario(sva_text: str, *, name: str | None = None) -> ScenarioDocument:
-    """Extract one SVA property into a scenario document."""
+def extract_sva_scenario(
+    sva_text: str,
+    *,
+    name: str | None = None,
+) -> tuple[ScenarioDocument, ExtractionReport]:
+    """Extract one SVA property into a scenario document and status report."""
 
     from sva_toolkit.formal.parse import parse_property
 
@@ -476,6 +482,7 @@ def extract_sva_scenario(sva_text: str, *, name: str | None = None) -> ScenarioD
         _collect_parameters_from_ast(structure_ast) if structure_ast is not None else _collect_parameters(normalized_body)
     )
 
+    report = ExtractionReport()
     notes: List[str] = []
     status = ExtractionStatus.EXACT
     if structure_ast is not None:
@@ -575,9 +582,9 @@ def extract_sva_scenario(sva_text: str, *, name: str | None = None) -> ScenarioD
                     if op == PropertyBinaryOperator.UNTIL:
                         status = _merge_status(status, ExtractionStatus.LOSSY)
                         notes.append("until excludes the terminating cycle and is shown as a hold-until skeleton")
-        except Exception as e:
+        except (AttributeError, NotImplementedError, SvaSyntaxError, TypeError, ValueError) as exc:
             status = ExtractionStatus.UNSUPPORTED
-            notes.append(f"DAG compilation failed: {str(e)}")
+            notes.append(_format_exception_reason("DAG compilation", exc))
 
     if not anchors and status == ExtractionStatus.UNSUPPORTED:
         anchors.append(_make_anchor("unsupported", parse_sva_condition("1'b1"), AnchorRole.SYNTHETIC))
@@ -635,16 +642,25 @@ def extract_sva_scenario(sva_text: str, *, name: str | None = None) -> ScenarioD
         ceg=graph if status != ExtractionStatus.UNSUPPORTED else None,
     )
 
+    report.add_property(property_name, status, notes, record_diagnostic=True)
     if status != ExtractionStatus.UNSUPPORTED:
-        document = _try_refine_with_witness(structure, document)
+        document = _try_refine_with_witness(structure, document, report)
 
-    return document
+    return document, report
 
 
-def extract_sva_scenarios(sva_texts: Iterable[str]) -> tuple[ScenarioDocument, ...]:
+def extract_sva_scenarios(
+    sva_texts: Iterable[str],
+) -> tuple[tuple[ScenarioDocument, ...], ExtractionReport]:
     """Extract multiple SVA properties into independent scenario documents."""
 
-    return tuple(extract_sva_scenario(sva_text) for sva_text in sva_texts)
+    documents: list[ScenarioDocument] = []
+    report = ExtractionReport()
+    for sva_text in sva_texts:
+        document, item_report = extract_sva_scenario(sva_text)
+        documents.append(document)
+        report.merge(item_report)
+    return tuple(documents), report
 
 
 def bundle_sva_scenarios(
@@ -654,11 +670,12 @@ def bundle_sva_scenarios(
     max_signals: int = 10,
     max_properties: int = 5,
     max_chains: int = 3,
-) -> tuple[ScenarioDocument, ...]:
+) -> tuple[tuple[ScenarioDocument, ...], ExtractionReport]:
     """Group compatible scenario documents into deterministic bundles."""
 
+    report = ExtractionReport.from_documents(documents)
     if not documents:
-        return ()
+        return (), report
 
     key_groups: dict[tuple[str, str, str], list[ScenarioDocument]] = {}
     for document in documents:
@@ -695,8 +712,8 @@ def bundle_sva_scenarios(
             if _independent_chain_count(cluster) > max_chains:
                 bundled.extend(cluster)
                 continue
-            bundled.append(_merge_cluster(tuple(cluster)))
-    return tuple(bundled)
+            bundled.append(_merge_cluster(tuple(cluster), report))
+    return tuple(bundled), report
 
 
 def _extract_sequence(
@@ -1258,6 +1275,13 @@ def _merge_status(*statuses: ExtractionStatus) -> ExtractionStatus:
     return ExtractionStatus.EXACT
 
 
+def _format_exception_reason(stage: str, exc: BaseException) -> str:
+    detail = type(exc).__name__
+    if str(exc):
+        return f"{stage} failed with {detail}: {exc}"
+    return f"{stage} failed with {detail}"
+
+
 def _signal_overlap(left: set[str], right: set[str]) -> float:
     if not left and not right:
         return 1.0
@@ -1310,7 +1334,10 @@ def _independent_chain_count(documents: Sequence[ScenarioDocument]) -> int:
     return chains
 
 
-def _merge_cluster(documents: tuple[ScenarioDocument, ...]) -> ScenarioDocument:
+def _merge_cluster(
+    documents: tuple[ScenarioDocument, ...],
+    report: ExtractionReport,
+) -> ScenarioDocument:
     primary = documents[0]
     
     # 1. Collect and Merge CEGs
@@ -1432,7 +1459,7 @@ def _merge_cluster(documents: tuple[ScenarioDocument, ...]) -> ScenarioDocument:
         ceg=merged_ceg,
     )
 
-    merged_doc = _try_joint_witness(documents, merged_doc)
+    merged_doc = _try_joint_witness(documents, merged_doc, report)
     return merged_doc
 
 
@@ -1449,7 +1476,10 @@ def _signal_widths_from_doc(document: ScenarioDocument) -> dict[str, int]:
     return widths
 
 
-def _doc_to_formal_property(doc: ScenarioDocument):
+def _doc_to_formal_property(
+    doc: ScenarioDocument,
+    report: ExtractionReport,
+):
     """Return a FormalProperty for the first property overlay in doc, or None."""
     from sva_toolkit.formal.parse import parse_property
     if not doc.properties:
@@ -1459,8 +1489,13 @@ def _doc_to_formal_property(doc: ScenarioDocument):
     if source:
         try:
             return parse_property(source)
-        except Exception:
-            pass
+        except ValueError as exc:
+            report.record_exception(
+                overlay.name,
+                stage="formal property reconstruction",
+                exc=exc,
+                status=ExtractionStatus.LOSSY,
+            )
     if overlay.body:
         from sva_toolkit.formal.model import FormalProperty as _FP
         return _FP(
@@ -1475,6 +1510,7 @@ def _doc_to_formal_property(doc: ScenarioDocument):
 def _try_refine_with_witness(
     formal_prop,
     document: ScenarioDocument,
+    report: ExtractionReport,
 ) -> ScenarioDocument:
     """Attempt EBMC witness refinement on a single-property document."""
     synthesizer = EbmcWitnessSynthesizer()
@@ -1483,7 +1519,14 @@ def _try_refine_with_witness(
     signal_widths = _signal_widths_from_doc(document)
     try:
         trace = synthesizer.synthesize(formal_prop, signal_widths=signal_widths)
-    except Exception:
+    except (OSError, RuntimeError, ValueError) as exc:
+        property_name = document.properties[0].name if document.properties else document.name
+        report.record_exception(
+            property_name,
+            stage="witness refinement",
+            exc=exc,
+            status=ExtractionStatus.LOSSY,
+        )
         return document
     if trace is None:
         return document
@@ -1493,6 +1536,7 @@ def _try_refine_with_witness(
 def _try_joint_witness(
     documents: tuple[ScenarioDocument, ...],
     merged_doc: ScenarioDocument,
+    report: ExtractionReport,
 ) -> ScenarioDocument:
     """Attempt joint EBMC witness synthesis for a bundle of documents."""
     synthesizer = EbmcWitnessSynthesizer()
@@ -1500,7 +1544,7 @@ def _try_joint_witness(
         return merged_doc
     props = []
     for doc in documents:
-        fp = _doc_to_formal_property(doc)
+        fp = _doc_to_formal_property(doc, report)
         if fp is not None:
             props.append(fp)
     if not props:
@@ -1514,7 +1558,14 @@ def _try_joint_witness(
             causal_order=causal_order,
             signal_widths=signal_widths,
         )
-    except Exception:
+    except (OSError, RuntimeError, ValueError) as exc:
+        for prop in merged_doc.properties:
+            report.record_exception(
+                prop.name,
+                stage="joint witness refinement",
+                exc=exc,
+                status=ExtractionStatus.LOSSY,
+            )
         return merged_doc
     if trace is None:
         return merged_doc

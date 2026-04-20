@@ -17,11 +17,12 @@ from sva_toolkit.timing.frontend.parser import parse_diagram
 
 
 def test_extract_sva_scenario_populates_ast_fields_and_ast_driven_metadata() -> None:
-    document = extract_sva_scenario(
+    document, report = extract_sva_scenario(
         "property req_to_mode; @(posedge clk) disable iff (!rst_n) req |-> (state == MODE); endproperty"
     )
 
     assert document.name == "req_to_mode"
+    assert report.worst_status().value == "exact"
     assert tuple(param.name for param in document.params) == ("MODE",)
     assert {signal.name for signal in document.signals} == {"req", "state"}
     assert document.clocking.disable_iff == "!rst_n"
@@ -31,10 +32,11 @@ def test_extract_sva_scenario_populates_ast_fields_and_ast_driven_metadata() -> 
 
 
 def test_extract_sva_scenario_keeps_uppercase_signal_names_as_signals() -> None:
-    document = extract_sva_scenario(
+    document, report = extract_sva_scenario(
         "property aw_ready; @(posedge clk) $rose(AWVALID) |-> ##[0:7] (AWVALID && AWREADY); endproperty"
     )
 
+    assert report.worst_status().value == "exact"
     assert document.params == ()
     assert {signal.name for signal in document.signals} == {"AWREADY", "AWVALID"}
 
