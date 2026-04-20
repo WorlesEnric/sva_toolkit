@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import random
-
 import pytest
 
 from sva_toolkit.cli.main import main
@@ -14,8 +12,7 @@ pytestmark = pytest.mark.integration
 
 
 def test_generate_command_emits_parseable_property_blocks(runner) -> None:
-    random.seed(1)
-    result = runner.invoke(main, ["generate", "--count", "2"], prog_name="sva")
+    result = runner.invoke(main, ["generate", "--count", "2", "--seed", "1"], prog_name="sva")
 
     assert result.exit_code == 0
     assert "module generated_sva" in result.output

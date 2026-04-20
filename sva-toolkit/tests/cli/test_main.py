@@ -107,7 +107,7 @@ def test_timing_validate_accepts_valid_dsl(tmp_path: Path) -> None:
 
 
 def test_generate_command_emits_requested_count() -> None:
-    result = CliRunner().invoke(main, ["generate", "--count", "2"], prog_name="sva")
+    result = CliRunner().invoke(main, ["generate", "--count", "2", "--seed", "7"], prog_name="sva")
 
     assert result.exit_code == 0
     assert "property p_gen_0;" in result.output

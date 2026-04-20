@@ -1,6 +1,7 @@
 """Public exports for the SVA generator package."""
 
 from sva_toolkit.generate.coverage import compute_coverage_statistics
+from sva_toolkit.generate.rng import GenerationRng, resolve_seed
 from sva_toolkit.generate.signal_presets import (
     AXI_SIGNALS,
     DEFAULT_SIGNALS,
@@ -42,6 +43,7 @@ __all__ = [
     "DisableIff",
     "FIFO_SIGNALS",
     "GenerationResult",
+    "GenerationRng",
     "HANDSHAKE_SIGNALS",
     "Implication",
     "NotProperty",
@@ -70,4 +72,5 @@ __all__ = [
     "get_random_delay",
     "get_random_repeat_count",
     "weighted_choice",
+    "resolve_seed",
 ]

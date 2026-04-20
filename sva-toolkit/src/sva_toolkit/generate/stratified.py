@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import random
-
+from sva_toolkit.generate.rng import GenerationRng
 from sva_toolkit.generate.synthesizer import SVASynthesizer, SVAProperty
 from sva_toolkit.generate.types import (
     BinaryOp,
@@ -113,6 +112,7 @@ class StratifiedGenerator:
         max_depth: int = 2,
         samples_per_construct: int = 50,
         verible_path: str | None = None,
+        rng: GenerationRng | None = None,
         tool_registry: ToolRegistry | None = None,
     ) -> None:
         """
@@ -125,12 +125,14 @@ class StratifiedGenerator:
             samples_per_construct: Minimum samples per construct
             verible_path: Path to verible for validation
         """
+        self.rng = rng or GenerationRng()
         self.synth = SVASynthesizer(
             signals=signals,
             max_depth=max_depth,
             clock_signal=clock_signal,
             verible_path=verible_path,
             enable_advanced_features=True,
+            rng=self.rng,
             tool_registry=tool_registry,
         )
         self.signals = signals
@@ -139,7 +141,7 @@ class StratifiedGenerator:
 
     def _get_random_signal(self) -> Signal:
         """Get a random signal."""
-        return Signal(random.choice(self.signals))
+        return Signal(self.rng.choice(self.signals))
 
     def _get_random_delay(self) -> str:
         """Get a random delay specification."""
@@ -206,7 +208,7 @@ class StratifiedGenerator:
         reset = self._get_random_signal()
         prop = Implication(
             self.synth.generate_sequence(0),
-            random.choice(["|->", "|=>"]),
+            self.rng.choice(["|->", "|=>"]),
             self.synth.generate_sequence(0)
         )
         return DisableIff(reset, prop)
@@ -215,7 +217,7 @@ class StratifiedGenerator:
         """Generate if-else property."""
         cond = self.synth.generate_bool(0)
         true_prop = self.synth.generate_sequence(0)
-        false_prop = self.synth.generate_sequence(0) if random.random() < 0.7 else None
+        false_prop = self.synth.generate_sequence(0) if self.rng.random() < 0.7 else None
         return PropertyIfElse(cond, true_prop, false_prop)
 
     # ========================================================================
@@ -307,7 +309,7 @@ class StratifiedGenerator:
     def generate_past(self) -> SVANode:
         """Generate property with $past function."""
         sig = self._get_random_signal()
-        depth = random.randint(1, 3)
+        depth = self.rng.randint(1, 3)
         past = PastFunction(sig, depth)
         other_sig = self._get_random_signal()
         comparison = BinaryOp(past, "==", other_sig)
@@ -519,7 +521,7 @@ class StratifiedGenerator:
             print(f"Done ({valid_samples} valid)")
 
         # Shuffle to mix constructs
-        random.shuffle(properties)
+        self.rng.shuffle(properties)
 
         print(f"\n✓ Generated {len(properties)} valid properties (dropped {invalid_count} invalid)")
         return properties

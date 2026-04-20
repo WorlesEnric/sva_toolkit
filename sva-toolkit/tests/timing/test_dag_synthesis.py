@@ -1,7 +1,5 @@
-import pytest
 from sva_toolkit.timing.bridge.from_sva import extract_sva_scenario, bundle_sva_scenarios
 from sva_toolkit.timing.bridge.emit_sva import synthesize_sva_from_diagram
-from sva_toolkit.timing.core.scenario import ScenarioDocument
 
 def test_multi_sva_bundling_temporal_unification():
     """Verify that multiple SVAs with a shared trigger are unified in a single diagram timeline."""

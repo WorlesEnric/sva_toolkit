@@ -25,7 +25,6 @@ from sva_toolkit.timing.bridge.ebmc_witness import (
 )
 from sva_toolkit.timing.core.conditions import (
     Condition,
-    Predicate,
     all_of,
     predicate_condition,
 )

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from sva_toolkit.generate.rng import GenerationRng
 from sva_toolkit.generate.types import (
     SVANode,
     Signal,
@@ -115,6 +115,7 @@ class SVASynthesizer:
         clock_signal: str = "clk",
         verible_path: str | None = None,
         enable_advanced_features: bool = True,
+        rng: GenerationRng | None = None,
         tool_registry: ToolRegistry | None = None,
     ) -> None:
         """
@@ -130,6 +131,7 @@ class SVASynthesizer:
         self.clock_signal: str = clock_signal
         self.verible_path: str | None = verible_path
         self.enable_advanced_features: bool = enable_advanced_features
+        self.rng = rng or GenerationRng()
         self.tool_registry = tool_registry or create_default_registry()
         self._operator_weights = self._load_operator_weights()
         self._max_ops_per_property = self._parse_max_ops_per_property(self._operator_weights)
@@ -147,19 +149,19 @@ class SVASynthesizer:
         @brief Get a random signal from the available signals.
         @return Signal node
         """
-        return Signal(random.choice(self.signals))
+        return Signal(self.rng.choice(self.signals))
 
     def _get_random_delay(self) -> str:
         """
         @brief Generate a random delay specification.
         @return Delay string (e.g., "##1", "##[1:5]", "##[0:$]")
         """
-        if random.random() < 0.1:  # 10% chance for unbounded
-            min_val = random.randint(0, 2)
+        if self.rng.random() < 0.1:  # 10% chance for unbounded
+            min_val = self.rng.randint(0, 2)
             return f"##[{min_val}:$]"
 
-        d_min = random.randint(0, 2)
-        d_max = d_min + random.randint(0, 3)
+        d_min = self.rng.randint(0, 2)
+        d_max = d_min + self.rng.randint(0, 3)
 
         if d_min == d_max:
             return f"##{d_min}"
@@ -174,16 +176,16 @@ class SVASynthesizer:
         @brief Generate a random repetition count.
         @return Count string (e.g., "3", "1:5", "0:$")
         """
-        if allow_unbounded and random.random() < 0.1:  # 10% chance for unbounded
-            min_val = random.randint(0, 2)
+        if allow_unbounded and self.rng.random() < 0.1:  # 10% chance for unbounded
+            min_val = self.rng.randint(0, 2)
             return f"{min_val}:$]"
 
-        c_min = random.randint(1, 5)
+        c_min = self.rng.randint(1, 5)
 
         if not allow_range:
             return f"{c_min}]"
 
-        c_max = c_min + random.randint(0, 3)
+        c_max = c_min + self.rng.randint(0, 3)
         if c_min == c_max:
             return f"{c_min}]"
         return f"{c_min}:{c_max}]"
@@ -239,8 +241,8 @@ class SVASynthesizer:
         return True
 
     def _generate_expr_leaf(self) -> SVANode:
-        if random.random() < 0.2:
-            past_depth = random.randint(1, 3)
+        if self.rng.random() < 0.2:
+            past_depth = self.rng.randint(1, 3)
             return PastFunction(self._get_random_signal(), past_depth)
         return self._get_random_signal()
 
@@ -248,10 +250,10 @@ class SVASynthesizer:
         return self._get_random_signal()
 
     def _generate_bool_leaf(self, depth: int) -> SVANode:
-        leaf_choice = random.random()
+        leaf_choice = self.rng.random()
 
         if leaf_choice < 0.4:
-            func = random.choice(self.UNARY_SYS_FUNCS)
+            func = self.rng.choice(self.UNARY_SYS_FUNCS)
             return UnarySysFunction(func, self._get_random_signal())
         elif leaf_choice < 0.5 and self.enable_advanced_features:
             seq = self.generate_sequence(depth + 1)
@@ -261,7 +263,7 @@ class SVASynthesizer:
     def _generate_sequence_or_bool(self, depth: int) -> SVANode:
         """Mix in boolean expressions with sequences for richer coverage."""
         # Boolean expressions introduce arithmetic/bitwise/system function usage
-        if random.random() < 0.35:
+        if self.rng.random() < 0.35:
             bool_depth = max(0, min(depth, self.max_depth - 1))
             return self.generate_bool(bool_depth)
         return self.generate_sequence(depth)
@@ -272,15 +274,15 @@ class SVASynthesizer:
         @param depth Current recursion depth
         @return SVANode of type EXPR
         """
-        if depth >= self.max_depth or random.random() > 0.7:
+        if depth >= self.max_depth or self.rng.random() > 0.7:
             # Leaf: signal or $past
             return self._generate_expr_leaf()
 
-        choice = random.random()
+        choice = self.rng.random()
 
         # Unary operation
         if choice < 0.15:
-            op = random.choice(["~", "-", "+"])
+            op = self.rng.choice(["~", "-", "+"])
             return UnaryOp(op, self.generate_expr(depth + 1))
 
         # Ternary operation (conditional)
@@ -294,7 +296,7 @@ class SVASynthesizer:
         else:
             if not self._consume_ops_budget():
                 return self._generate_expr_leaf()
-            op = weighted_choice(self._expr_op_weights)
+            op = weighted_choice(self._expr_op_weights, rng=self.rng)
             if op in self.ARITH_OPS:
                 left = self._generate_arith_operand()
                 right = self._generate_arith_operand()
@@ -314,7 +316,7 @@ class SVASynthesizer:
         @param depth Current recursion depth
         @return SVANode of type BOOL
         """
-        choice = random.random()
+        choice = self.rng.random()
 
         if depth >= self.max_depth or choice < 0.25:
             # Leaf: signal, system function, or sequence.ended
@@ -328,7 +330,7 @@ class SVASynthesizer:
             # Binary comparison (relational or equality)
             if not self._consume_ops_budget():
                 return self._generate_bool_leaf(depth)
-            op = weighted_choice(self._comparison_op_weights)
+            op = weighted_choice(self._comparison_op_weights, rng=self.rng)
             return BinaryOp(
                 self.generate_expr(0),
                 op,
@@ -340,7 +342,7 @@ class SVASynthesizer:
             # Logical operation (&&, ||)
             if not self._consume_ops_budget():
                 return self._generate_bool_leaf(depth)
-            op = weighted_choice(self._logical_op_weights)
+            op = weighted_choice(self._logical_op_weights, rng=self.rng)
             return BinaryOp(
                 self.generate_bool(depth + 1),
                 op,
@@ -354,7 +356,7 @@ class SVASynthesizer:
         @param depth Current recursion depth
         @return SVANode of type SEQUENCE
         """
-        choice = random.random()
+        choice = self.rng.random()
 
         # Increased probability of base case for simpler properties
         if depth >= self.max_depth or choice < 0.45:  # Increased from 0.3
@@ -373,7 +375,7 @@ class SVASynthesizer:
 
         elif choice < 0.8:  # Sequence repeat
             # Sequence repeat
-            op = random.choice(self.REPEAT_OPS)
+            op = self.rng.choice(self.REPEAT_OPS)
             count = self._get_random_repeat_count(
                 allow_range=(op != "[->"),
                 allow_unbounded=(op != "[->")
@@ -390,7 +392,7 @@ class SVASynthesizer:
 
         elif choice < 0.9:  # Binary sequence operation - reduced
             # Binary sequence operation
-            op = random.choice(self.SEQ_BIN_OPS)
+            op = self.rng.choice(self.SEQ_BIN_OPS)
             if op == "throughout":
                 left = self.generate_bool(depth + 1)
                 right = self.generate_sequence(depth + 1)
@@ -405,7 +407,7 @@ class SVASynthesizer:
 
         else:
             # first_match (advanced feature) - reduced probability
-            if self.enable_advanced_features and random.random() < 0.3:
+            if self.enable_advanced_features and self.rng.random() < 0.3:
                 return SequenceFirstMatch(self.generate_sequence(depth + 1))
             else:
                 # Fallback to simple signal
@@ -422,18 +424,18 @@ class SVASynthesizer:
             self._reset_ops_budget()
             reset_budget = True
 
-        choice = random.random()
+        choice = self.rng.random()
 
         # Implication (most common - increased probability for readability)
         if choice < 0.75:  # Increased from 0.6
             ante = self._generate_sequence_or_bool(depth + 1)
             cons = self._generate_sequence_or_bool(depth + 1)
-            op = random.choice(self.IMPLICATIONS)
+            op = self.rng.choice(self.IMPLICATIONS)
             prop = Implication(ante, op, cons)
 
         # Property binary operation (and, or) - reduced probability
         elif choice < 0.82 and self.enable_advanced_features and depth < self.max_depth - 1:
-            op = random.choice(self.PROPERTY_BIN_OPS)
+            op = self.rng.choice(self.PROPERTY_BIN_OPS)
             # Avoid deep nesting - use sequences instead of properties
             left_prop = self._generate_sequence_or_bool(depth + 1)
             right_prop = self._generate_sequence_or_bool(depth + 1)
@@ -441,7 +443,7 @@ class SVASynthesizer:
 
         # Until operators - reduced probability
         elif choice < 0.88 and self.enable_advanced_features:
-            op = random.choice(self.UNTIL_OPS)
+            op = self.rng.choice(self.UNTIL_OPS)
             left = self._generate_sequence_or_bool(depth + 1)
             right = self._generate_sequence_or_bool(depth + 1)
             prop = PropertyUntil(left, op, right)
@@ -452,18 +454,18 @@ class SVASynthesizer:
             true_prop = self._generate_sequence_or_bool(depth + 1)
             false_prop = (
                 self._generate_sequence_or_bool(depth + 1)
-                if random.random() < 0.5 else None
+                if self.rng.random() < 0.5 else None
             )
             prop = PropertyIfElse(condition, true_prop, false_prop)
 
         else:
             # Direct sequence as property or "not" property
             prop = self._generate_sequence_or_bool(depth + 1)
-            if random.random() < 0.2:  # Reduced from 0.3
+            if self.rng.random() < 0.2:  # Reduced from 0.3
                 prop = NotProperty(prop)
 
         # Reduced chance to wrap in disable iff for simpler properties
-        if random.random() < 0.1 and depth == 0:  # Only at top level
+        if self.rng.random() < 0.1 and depth == 0:  # Only at top level
             reset = self._get_random_signal()
             prop = DisableIff(reset, prop)
 

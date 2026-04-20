@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import random
-
 import pytest
 
 from sva_toolkit.cli.main import main
@@ -13,8 +11,7 @@ pytestmark = pytest.mark.integration
 
 
 def test_generate_then_describe_pipeline_produces_human_readable_output(runner) -> None:
-    random.seed(1)
-    generate_result = runner.invoke(main, ["generate", "--count", "1"], prog_name="sva")
+    generate_result = runner.invoke(main, ["generate", "--count", "1", "--seed", "1"], prog_name="sva")
 
     assert generate_result.exit_code == 0
     blocks = extract_property_blocks(generate_result.output)

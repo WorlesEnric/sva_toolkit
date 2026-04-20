@@ -125,7 +125,7 @@ flowchart TD
 | T01     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, land trivia + preprocessor handling for `sva/lexer.py`               |
 | T02     | Codex          | DONE        | 100        | 2026-04-20  | —        | Delivered atomic writers, diagnostics/logging, exports, and runtime tests    |
 | T03     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, harden `runtime/process.py` (setsid, killpg, typed errors)           |
-| T04     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, thread `GenerationRng` through `generate/`                           |
+| T04     | codex-t4       | DONE        | 100        | 2026-04-20  | —        | Delivered seedable `GenerationRng`, CLI `--seed`, determinism tests; T14 now unblocked |
 | T05     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, add `formal/sanitize.py` and migrate backends to use it              |
 | T06     | —              | NOT_STARTED | 0          | 2026-04-19  | T01      | Wait for T01 DONE, then expand lexer keyword set and AST dataclasses        |
 | T07     | —              | NOT_STARTED | 0          | 2026-04-19  | T06      | Wait for T06 DONE, then expand parser/emitter and surface opaque downgrades |
@@ -383,5 +383,8 @@ Append new entries at the bottom. Never rewrite history.
   project scaffold laid out; all tasks seeded as NOT_STARTED.
 
 <!-- Append new log entries below this line. -->
+- 2026-04-20 10:28 — T04 — codex-t4 — NOT_STARTED -> IN_PROGRESS — Claimed seedable RNG task; auditing `generate/` call-sites and CLI integration.
+- 2026-04-20 11:02 — T04 — codex-t4 — scope note — Touched `tests/timing/test_dag_synthesis.py` and `tests/timing/test_ebmc_witness.py` only to remove pre-existing unused imports so required `ruff check src tests` would pass cleanly.
+- 2026-04-20 11:04 — T04 — codex-t4 — IN_PROGRESS -> DONE — Added `GenerationRng`, threaded RNG through `generate/`, mounted CLI `--seed`, printed implicit seeds to stderr, and landed determinism coverage with passing pytest + ruff.
 - 2026-04-20 15:44 — T02 — Codex — NOT_STARTED -> IN_PROGRESS — Claimed task, reviewed docs, and aligned design against runtime/test scaffolds.
 - 2026-04-20 15:57 — T02 — Codex — IN_PROGRESS -> DONE — Implemented atomic I/O and diagnostics helpers; `pytest -q tests/runtime` and `ruff check` passed.

@@ -12,6 +12,7 @@ from typing import Any, Callable
 import click
 
 from sva_toolkit import __version__
+from sva_toolkit.cli.generate_flags import register as _register_generate_flags
 
 
 def _handle_cli_errors(function: Callable[..., Any]) -> Callable[..., Any]:
@@ -332,10 +333,11 @@ def timing_bundle_sva(input_files: tuple[str, ...], output: str | None) -> None:
 @click.option("--validate", is_flag=True, help="Validate generated assertions with Verible when available.")
 @click.option("--coverage", is_flag=True, help="Append coverage statistics for the generated assertions.")
 @_handle_cli_errors
-def generate_command(count: int, mode: str, validate: bool, coverage: bool) -> None:
+def generate_command(count: int, mode: str, validate: bool, coverage: bool, seed: int | None = None) -> None:
     """Generate SVA properties using the V3 generator module."""
     from sva_toolkit.generate import (
         DEFAULT_SIGNALS,
+        GenerationRng,
         SVASynthesizer,
         StratifiedGenerator,
         compute_coverage_statistics,
@@ -349,13 +351,17 @@ def generate_command(count: int, mode: str, validate: bool, coverage: bool) -> N
     if not signals:
         signals = ["req", "ack", "gnt"]
 
+    rng = GenerationRng(seed=seed)
+    if seed is None:
+        click.echo(f"Using generation seed: {rng.seed_value}", err=True)
+
     if mode == "stratified":
-        generator = StratifiedGenerator(signals=signals, samples_per_construct=max(1, count))
+        generator = StratifiedGenerator(signals=signals, samples_per_construct=max(1, count), rng=rng)
         properties = generator.generate_stratified_dataset()[:count]
         module_code = generate_sv_module("generated_sva", signals, [prop.property_block for prop in properties])
         validator = generator.synth
     else:
-        synthesizer = SVASynthesizer(signals=signals, max_depth=2)
+        synthesizer = SVASynthesizer(signals=signals, max_depth=2, rng=rng)
         module_code, properties = synthesizer.generate_module("generated_sva", count)
         validator = synthesizer
 
@@ -373,6 +379,9 @@ def generate_command(count: int, mode: str, validate: bool, coverage: bool) -> N
             f"{stats['constructs_covered']}/{stats['constructs_total']} constructs "
             f"({stats['coverage_pct']:.1f}%)"
         )
+
+
+_register_generate_flags(main)
 
 
 @describe.command("svad")

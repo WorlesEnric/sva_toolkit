@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import random
 from typing import Any
 
 import pytest
 
+from sva_toolkit.generate import GenerationRng
 from sva_toolkit.runtime.config import ToolConfig
 from sva_toolkit.runtime.process import RunResult
 from sva_toolkit.runtime.tools import ToolRegistry, create_default_registry
@@ -23,8 +23,7 @@ def _make_registry(*, path: str | None, available: bool) -> ToolRegistry:
 def test_generate_module_returns_requested_property_count_and_coverage() -> None:
     from sva_toolkit.generate import SVASynthesizer, compute_coverage_statistics
 
-    random.seed(7)
-    synthesizer = SVASynthesizer(signals=["req", "ack", "gnt"], max_depth=2)
+    synthesizer = SVASynthesizer(signals=["req", "ack", "gnt"], max_depth=2, rng=GenerationRng(seed=7))
 
     module_code, properties = synthesizer.generate_module(
         module_name="demo_sva",
@@ -86,10 +85,10 @@ def test_generated_module_is_verible_valid_when_tool_is_available() -> None:
     if not registry.get("verible-verilog-syntax").available:
         pytest.skip("verible-verilog-syntax is not installed")
 
-    random.seed(11)
     synthesizer = SVASynthesizer(
         signals=["req", "ack", "gnt", "valid", "ready"],
         max_depth=2,
+        rng=GenerationRng(seed=11),
         tool_registry=registry,
     )
     module_code, _properties = synthesizer.generate_module(

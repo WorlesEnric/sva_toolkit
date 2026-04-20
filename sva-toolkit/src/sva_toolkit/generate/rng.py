@@ -1,23 +1,58 @@
-"""
-SCAFFOLD SUMMARY — replace this paragraph with the real implementation in task T04.
-
-This file centralizes randomness for the generator so that `sva generate
---seed N` can reproduce its output byte-for-byte, a direct fix for
-`docs/gaps.md` §3.5 and risk R5. It must expose a `GenerationRng` class
-wrapping `random.Random` and a `resolve_seed(explicit: int | None) -> int`
-helper that either returns the explicit seed or draws one from
-`secrets.randbits(32)` and prints it to stderr (so the reproducer can
-capture it). `GenerationRng` must expose only the methods actually used
-in `generate/synthesizer.py`, `generate/stratified.py`, and
-`generate/utils.py` (`random`, `randint`, `choice`, `choices`, `sample`,
-`shuffle`, `uniform`, `seed`) so that migrating those modules is a
-one-import mechanical rename and a linter can ban the bare `random`
-module there. The constructor accepts a seed (`int | None`) — a `None`
-seed triggers `resolve_seed`. The module depends only on the standard
-library. Relates to DAG task T04; consumed by T13 via
-`cli/generate_flags.py`.
-"""
+"""Seedable random-number generation for SVA synthesis."""
 
 from __future__ import annotations
 
-# Implementation belongs to T04. Intentionally empty.
+from collections.abc import Sequence
+from random import Random
+import secrets
+from typing import TypeVar
+
+
+T = TypeVar("T")
+
+
+def resolve_seed(explicit: int | None) -> int:
+    """Return an explicit seed or draw a fresh one from the OS."""
+    if explicit is not None:
+        return explicit
+    return secrets.randbits(32)
+
+
+class GenerationRng:
+    """Small wrapper around ``random.Random`` for generator call sites."""
+
+    def __init__(self, seed: int | None = None) -> None:
+        self.seed_value = resolve_seed(seed)
+        self._random = Random(self.seed_value)
+
+    def random(self) -> float:
+        return self._random.random()
+
+    def randint(self, a: int, b: int) -> int:
+        return self._random.randint(a, b)
+
+    def choice(self, seq: Sequence[T]) -> T:
+        return self._random.choice(seq)
+
+    def choices(
+        self,
+        population: Sequence[T],
+        weights: Sequence[float] | None = None,
+        *,
+        cum_weights: Sequence[float] | None = None,
+        k: int = 1,
+    ) -> list[T]:
+        return self._random.choices(population, weights=weights, cum_weights=cum_weights, k=k)
+
+    def sample(self, population: Sequence[T], k: int) -> list[T]:
+        return self._random.sample(population, k)
+
+    def shuffle(self, x: list[T]) -> None:
+        self._random.shuffle(x)
+
+    def uniform(self, a: float, b: float) -> float:
+        return self._random.uniform(a, b)
+
+    def seed(self, a: int | None = None) -> None:
+        self.seed_value = resolve_seed(a)
+        self._random.seed(self.seed_value)
