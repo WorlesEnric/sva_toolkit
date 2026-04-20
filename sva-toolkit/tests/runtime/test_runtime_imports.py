@@ -23,8 +23,16 @@ def test_importing_tools_module_does_not_probe_path(monkeypatch) -> None:
 def test_runtime_package_exports_public_api() -> None:
     runtime = importlib.import_module("sva_toolkit.runtime")
 
+    assert hasattr(runtime, "atomic_write_text")
+    assert hasattr(runtime, "atomic_write_json")
+    assert hasattr(runtime, "atomic_write_jsonl")
     assert hasattr(runtime, "ToolkitConfig")
     assert hasattr(runtime, "ToolConfig")
+    assert hasattr(runtime, "DIAGNOSTIC_KINDS")
+    assert hasattr(runtime, "LOGGER")
+    assert hasattr(runtime, "DEFAULT_DIAGNOSTICS")
+    assert hasattr(runtime, "Diagnostics")
+    assert hasattr(runtime, "configure_cli_logging")
     assert hasattr(runtime, "ToolRegistry")
     assert hasattr(runtime, "create_default_registry")
     assert hasattr(runtime, "RunResult")

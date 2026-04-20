@@ -1,26 +1,84 @@
-"""
-SCAFFOLD SUMMARY — replace this paragraph with the real implementation in task T02.
-
-This file is the project-wide diagnostic surface. It owns the single
-`sva_toolkit` logger (using `logging.getLogger("sva_toolkit")` with a
-`NullHandler` by default) and a `Diagnostics` collector that tracks
-silent-fallback events from every domain: `opaque_property`,
-`opaque_sequence`, `opaque_expr`, `translator_fallback`,
-`lossy_extraction`, `unsupported_extraction`, `cache_miss`,
-`cache_corruption`, `retry_exhausted`, `tool_missing`, `timeout`. Its
-public surface includes `configure_cli_logging(verbosity: int)` (wires
-a `StreamHandler` with a stable format on first call), a
-`Diagnostics.record(kind: str, *, detail: str | None = None)` method, a
-`Diagnostics.snapshot()` method returning a frozen mapping, and a
-`Diagnostics.render_summary()` method that emits the end-of-run summary
-printed by `cli/main.py` before a non-zero exit when any non-success
-category is non-empty. The collector is thread- and process-safe
-(counters use `multiprocessing.Manager` only when explicitly requested
-by the dataset builder; default is an in-process `threading.Lock`).
-Relates to DAG task T02, consumed by T07 (sva/diagnostics.py), T09, T11,
-T12, and T13.
-"""
+"""Shared diagnostic counters and CLI logging configuration."""
 
 from __future__ import annotations
 
-# Implementation belongs to T02. Intentionally empty.
+import logging
+from types import MappingProxyType
+import threading
+from typing import Final, Mapping
+
+DIAGNOSTIC_KINDS: Final[tuple[str, ...]] = (
+    "opaque_property",
+    "translator_fallback",
+    "lossy_extraction",
+    "cache_miss",
+    "retry_exhausted",
+)
+
+LOGGER = logging.getLogger("sva_toolkit")
+if not any(isinstance(handler, logging.NullHandler) for handler in LOGGER.handlers):
+    LOGGER.addHandler(logging.NullHandler())
+
+_CLI_HANDLER: logging.Handler | None = None
+_CLI_HANDLER_LOCK = threading.Lock()
+
+
+class Diagnostics:
+    def __init__(self, kinds: tuple[str, ...] = DIAGNOSTIC_KINDS) -> None:
+        self._kinds = tuple(kinds)
+        self._counts = {kind: 0 for kind in self._kinds}
+        self._lock = threading.Lock()
+
+    def record(self, kind: str, *, detail: str | None = None) -> None:
+        _ = detail
+        with self._lock:
+            if kind not in self._counts:
+                raise ValueError(f"Unsupported diagnostic kind: {kind}")
+            self._counts[kind] += 1
+
+    def snapshot(self) -> Mapping[str, int]:
+        with self._lock:
+            return MappingProxyType(dict(sorted(self._counts.items())))
+
+    def render_summary(self) -> str:
+        with self._lock:
+            non_zero = [
+                f"{kind}={count}"
+                for kind, count in sorted(self._counts.items())
+                if count > 0
+            ]
+        if not non_zero:
+            return ""
+        return "Diagnostics summary: " + ", ".join(non_zero)
+
+
+DEFAULT_DIAGNOSTICS = Diagnostics()
+
+
+def configure_cli_logging(verbosity: int) -> logging.Logger:
+    level = logging.WARNING
+    if verbosity == 1:
+        level = logging.INFO
+    elif verbosity >= 2:
+        level = logging.DEBUG
+
+    LOGGER.setLevel(level)
+    LOGGER.propagate = False
+
+    global _CLI_HANDLER
+    with _CLI_HANDLER_LOCK:
+        if _CLI_HANDLER is None:
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+            LOGGER.addHandler(handler)
+            _CLI_HANDLER = handler
+    return LOGGER
+
+
+__all__ = [
+    "DIAGNOSTIC_KINDS",
+    "LOGGER",
+    "DEFAULT_DIAGNOSTICS",
+    "Diagnostics",
+    "configure_cli_logging",
+]

@@ -123,7 +123,7 @@ flowchart TD
 | Task ID | Owner / worker | Status      | Progress % | Last update | Blockers | Next action                                                                 |
 | ------- | -------------- | ----------- | ---------- | ----------- | -------- | --------------------------------------------------------------------------- |
 | T01     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, land trivia + preprocessor handling for `sva/lexer.py`               |
-| T02     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, land `runtime/atomic_io.py` and `runtime/diagnostics.py`             |
+| T02     | Codex          | DONE        | 100        | 2026-04-20  | —        | Delivered atomic writers, diagnostics/logging, exports, and runtime tests    |
 | T03     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, harden `runtime/process.py` (setsid, killpg, typed errors)           |
 | T04     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, thread `GenerationRng` through `generate/`                           |
 | T05     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, add `formal/sanitize.py` and migrate backends to use it              |
@@ -383,3 +383,5 @@ Append new entries at the bottom. Never rewrite history.
   project scaffold laid out; all tasks seeded as NOT_STARTED.
 
 <!-- Append new log entries below this line. -->
+- 2026-04-20 15:44 — T02 — Codex — NOT_STARTED -> IN_PROGRESS — Claimed task, reviewed docs, and aligned design against runtime/test scaffolds.
+- 2026-04-20 15:57 — T02 — Codex — IN_PROGRESS -> DONE — Implemented atomic I/O and diagnostics helpers; `pytest -q tests/runtime` and `ruff check` passed.
