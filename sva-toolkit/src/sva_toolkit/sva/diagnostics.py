@@ -1,21 +1,58 @@
-"""
-SCAFFOLD SUMMARY — replace this paragraph with the real implementation in task T07.
-
-This file owns the parser-side diagnostics counter that surfaces the silent
-`recover=True` opaque downgrades called out in `docs/gaps.md` §2.2. It must
-expose a module-level `ParserDiagnostics` object with thread-safe counters
-for `opaque_property`, `opaque_sequence`, `opaque_expr`, and
-`fallback_recover_used`, a `reset()` method, a `snapshot()` method that
-returns a frozen dict, and a `emit_warning(kind, text, span)` helper that
-logs through the shared `sva_toolkit.runtime.diagnostics` façade before
-bumping the counter. Every call site in `sva_toolkit.sva.parser` that
-currently wraps a parse failure into an `OpaqueProperty`/`OpaqueSequence`/
-`OpaqueExpr` must route through the helper so the CLI and the dataset
-builder can detect the downgrade and react (either exit non-zero or at
-least print a WARNING summary). The module depends only on
-`sva_toolkit.runtime.diagnostics`. Relates to DAG task T07.
-"""
-
 from __future__ import annotations
 
-# Implementation belongs to T07. Intentionally empty.
+from types import MappingProxyType
+import threading
+from typing import Mapping
+
+from sva_toolkit.runtime.diagnostics import LOGGER
+from sva_toolkit.sva.ast import SourceSpan
+
+
+_KINDS = (
+    "opaque_property",
+    "opaque_sequence",
+    "opaque_expr",
+    "fallback_recover_used",
+)
+
+
+class _ParserDiagnostics:
+    def __init__(self) -> None:
+        self._counts = {kind: 0 for kind in _KINDS}
+        self._lock = threading.Lock()
+
+    def reset(self) -> None:
+        with self._lock:
+            for kind in self._counts:
+                self._counts[kind] = 0
+
+    def record(self, kind: str) -> None:
+        with self._lock:
+            if kind not in self._counts:
+                raise ValueError(f"Unsupported parser diagnostic kind: {kind}")
+            self._counts[kind] += 1
+
+    def snapshot(self) -> Mapping[str, int]:
+        with self._lock:
+            return MappingProxyType(dict(sorted(self._counts.items())))
+
+    def opaque_count(self) -> int:
+        snapshot = self.snapshot()
+        return snapshot["opaque_property"] + snapshot["opaque_sequence"] + snapshot["opaque_expr"]
+
+    def emit_warning(self, kind: str, text: str, span: SourceSpan | None) -> None:
+        self.record(kind)
+        self.record("fallback_recover_used")
+        location = ""
+        if span is not None:
+            location = f" at {span.start}:{span.end}"
+        preview = " ".join(text.strip().split())
+        if len(preview) > 160:
+            preview = preview[:157] + "..."
+        LOGGER.warning("parser recover=True downgraded to %s%s: %s", kind, location, preview)
+
+
+ParserDiagnostics = _ParserDiagnostics()
+
+
+__all__ = ["ParserDiagnostics"]

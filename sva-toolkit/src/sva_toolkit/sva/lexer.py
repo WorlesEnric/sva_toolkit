@@ -12,7 +12,7 @@ from sva_toolkit.sva.trivia import Trivia, collect_trivia, consume_string_litera
 class TokenKind(str, Enum):
     IDENT = "IDENT"
     LITERAL = "LITERAL"
-    DOLLAR = "LITERAL"
+    DOLLAR = "$"
     STRING = "STRING"
     DOLLAR_IDENT = "DOLLAR_IDENT"
     PROPERTY = "property"
@@ -74,6 +74,8 @@ class TokenKind(str, Enum):
     OUTPUT = "output"
     LPAREN = "("
     RPAREN = ")"
+    LBRACE = "{"
+    RBRACE = "}"
     LBRACKET = "["
     RBRACKET = "]"
     SEMI = ";"
@@ -206,6 +208,8 @@ _MULTI_CHAR_TOKENS = (
 _SINGLE_CHAR_TOKENS = {
     "(": TokenKind.LPAREN,
     ")": TokenKind.RPAREN,
+    "{": TokenKind.LBRACE,
+    "}": TokenKind.RBRACE,
     "[": TokenKind.LBRACKET,
     "]": TokenKind.RBRACKET,
     ";": TokenKind.SEMI,
