@@ -1,21 +1,37 @@
-"""
-SCAFFOLD SUMMARY — replace this paragraph with the real implementation in task T03.
-
-This file defines the typed runtime-level exceptions that callers of
-`sva_toolkit.runtime.process.run_tool` can catch in order to distinguish
-failure modes — a direct fix for `docs/gaps.md` §3.7 and R17. It must
-expose: `ToolMissingError(FileNotFoundError)` for the "binary not on
-PATH" case (carries `cmd: Sequence[str]` and an optional hint about
-installation), `ToolTimeoutError(RuntimeError)` for timeouts after
-process-group kill, `ToolCrashError(RuntimeError)` for nonzero exits,
-and `BackendUnavailableError(RuntimeError)` reserved for the formal
-service when every configured backend is missing. `cli/exit_codes.py`
-(T13) dispatches on these types to assign stable exit codes. The module
-is a pure taxonomy: no runtime behaviour, no logging, no subprocess
-calls, no imports beyond the standard library. Relates to DAG task T03;
-T13 consumes the taxonomy.
-"""
+"""Typed runtime errors surfaced by subprocess execution helpers."""
 
 from __future__ import annotations
 
-# Implementation belongs to T03. Intentionally empty.
+import errno
+from typing import Sequence
+
+
+class ToolMissingError(FileNotFoundError):
+    """Raised when a configured external tool binary cannot be executed."""
+
+    def __init__(self, path: str | None, cmd: Sequence[str] | str) -> None:
+        normalized_cmd: tuple[str, ...] | str
+        if isinstance(cmd, str):
+            normalized_cmd = cmd
+        else:
+            normalized_cmd = tuple(str(part) for part in cmd)
+
+        resolved_path = path or _command_head(normalized_cmd)
+        command_text = normalized_cmd if isinstance(normalized_cmd, str) else " ".join(normalized_cmd)
+
+        self.path = resolved_path
+        self.cmd = normalized_cmd
+
+        super().__init__(
+            errno.ENOENT,
+            f"Required tool '{resolved_path}' is not available for command: {command_text}",
+            resolved_path,
+        )
+
+
+def _command_head(cmd: tuple[str, ...] | str) -> str:
+    if isinstance(cmd, str):
+        return cmd
+    if not cmd:
+        return "<unknown>"
+    return cmd[0]
