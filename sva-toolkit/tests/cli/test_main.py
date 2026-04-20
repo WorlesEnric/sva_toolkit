@@ -60,21 +60,20 @@ def test_parse_command_supports_json_output() -> None:
 
 
 def test_formal_check_reports_service_result(monkeypatch: pytest.MonkeyPatch) -> None:
-    import sva_toolkit.formal as formal_module
-
     class _FakeFormalService:
         def __init__(self, **kwargs) -> None:
             self.kwargs = kwargs
 
-        def check_implication(self, antecedent: str, consequent: str) -> CheckResult:
+        def check_implication(self, antecedent: str, consequent: str, **kwargs) -> CheckResult:
             assert antecedent == "req |-> ack"
             assert consequent == "req |-> ##1 ack"
+            assert kwargs == {"clock": None, "clock_edge": None, "reset": None}
             return CheckResult(
                 result=ImplicationResult.IMPLIES,
                 message="proved",
             )
 
-    monkeypatch.setattr(formal_module, "FormalService", _FakeFormalService)
+    monkeypatch.setattr("sva_toolkit.cli.formal_flags.FormalService", _FakeFormalService)
 
     result = CliRunner().invoke(
         main,

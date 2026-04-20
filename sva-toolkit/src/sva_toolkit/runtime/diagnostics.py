@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from types import MappingProxyType
 import threading
 from typing import Final, Mapping
@@ -23,6 +24,12 @@ _CLI_HANDLER: logging.Handler | None = None
 _CLI_HANDLER_LOCK = threading.Lock()
 
 
+class _DynamicStderrHandler(logging.StreamHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        self.stream = sys.stderr
+        super().emit(record)
+
+
 class Diagnostics:
     def __init__(self, kinds: tuple[str, ...] = DIAGNOSTIC_KINDS) -> None:
         self._kinds = tuple(kinds)
@@ -39,6 +46,11 @@ class Diagnostics:
     def snapshot(self) -> Mapping[str, int]:
         with self._lock:
             return MappingProxyType(dict(sorted(self._counts.items())))
+
+    def reset(self) -> None:
+        with self._lock:
+            for kind in self._counts:
+                self._counts[kind] = 0
 
     def render_summary(self) -> str:
         with self._lock:
@@ -68,7 +80,7 @@ def configure_cli_logging(verbosity: int) -> logging.Logger:
     global _CLI_HANDLER
     with _CLI_HANDLER_LOCK:
         if _CLI_HANDLER is None:
-            handler = logging.StreamHandler()
+            handler = _DynamicStderrHandler()
             handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
             LOGGER.addHandler(handler)
             _CLI_HANDLER = handler

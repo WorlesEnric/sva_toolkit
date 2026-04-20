@@ -15,6 +15,7 @@ from sva_toolkit.data.cache import write_cached_result as _shared_write_cached_r
 from sva_toolkit.describe import SVACoTBuilder, SVADTranslator
 from sva_toolkit.runtime.diagnostics import DEFAULT_DIAGNOSTICS, LOGGER, Diagnostics
 from sva_toolkit.runtime.llm import LLMClient, LLMConfig
+from sva_toolkit.runtime.retry import RetryExhaustedError
 
 
 def _dataset_cache_key(sva_code: str, model: str, *, generate_svad: bool, generate_cot: bool) -> str:
@@ -64,6 +65,14 @@ def _materialize_llm_client(
     if llm_config_dict is None:
         return None
     return LLMClient(LLMConfig(**llm_config_dict))
+
+
+def _coerce_timeout_error(exc: Exception) -> TimeoutError | None:
+    if isinstance(exc, TimeoutError):
+        return exc
+    if isinstance(exc, RetryExhaustedError) and isinstance(exc.last_error, TimeoutError):
+        return TimeoutError(str(exc.last_error))
+    return None
 
 
 def _process_dataset_item(
@@ -119,6 +128,9 @@ def _process_dataset_item(
                 result["SVAD"] = active_llm_client.generate(system_prompt, user_prompt)
                 metadata["svad_source"] = "llm"
             except Exception as exc:
+                timeout_error = _coerce_timeout_error(exc)
+                if timeout_error is not None:
+                    raise timeout_error from exc
                 metadata["svad_error"] = str(exc)
                 try:
                     result["SVAD"] = active_translator.translate(item_data["SVA"])

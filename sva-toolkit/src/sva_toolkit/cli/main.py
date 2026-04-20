@@ -2,32 +2,43 @@ from __future__ import annotations
 
 from dataclasses import fields, is_dataclass
 from enum import Enum
+from functools import wraps
 import json
 import os
 from pathlib import Path
 import pprint
 import re
+import traceback
 from typing import Any, Callable
 
 import click
 
 from sva_toolkit import __version__
+from sva_toolkit.cli.exit_codes import exit_code_for
+from sva_toolkit.cli.formal_flags import register as _register_formal_flags
 from sva_toolkit.cli.generate_flags import register as _register_generate_flags
+from sva_toolkit.cli.timing_flags import record_report as _record_timing_report
+from sva_toolkit.cli.timing_flags import register as _register_timing_flags
+from sva_toolkit.runtime.atomic_io import atomic_write_text
+from sva_toolkit.runtime.diagnostics import DEFAULT_DIAGNOSTICS, LOGGER, configure_cli_logging
 
 
 def _handle_cli_errors(function: Callable[..., Any]) -> Callable[..., Any]:
+    if getattr(function, "__sva_cli_errors_wrapped__", False):
+        return function
+
+    @wraps(function)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
+        ctx = click.get_current_context()
         try:
             return function(*args, **kwargs)
-        except click.ClickException:
-            raise
-        except FileNotFoundError as exc:
-            raise click.ClickException(f"File not found: {exc.filename}") from exc
         except Exception as exc:
-            raise click.ClickException(str(exc)) from exc
+            _emit_cli_error(exc)
+            ctx.exit(int(exit_code_for(exc)))
+        finally:
+            _emit_diagnostics_summary()
 
-    wrapper.__name__ = function.__name__
-    wrapper.__doc__ = function.__doc__
+    setattr(wrapper, "__sva_cli_errors_wrapped__", True)
     return wrapper
 
 
@@ -40,7 +51,7 @@ def _load_text_argument(value: str) -> str:
 
 def _write_text_output(output: str | None, text: str) -> None:
     if output:
-        Path(output).write_text(text, encoding="utf-8")
+        atomic_write_text(output, text)
         return
     click.echo(text)
 
@@ -48,7 +59,7 @@ def _write_text_output(output: str | None, text: str) -> None:
 def _write_json_output(output: str | None, payload: dict[str, Any]) -> None:
     rendered = json.dumps(payload, indent=2)
     if output:
-        Path(output).write_text(rendered + "\n", encoding="utf-8")
+        atomic_write_text(output, rendered + "\n")
         return
     click.echo(rendered)
 
@@ -56,10 +67,41 @@ def _write_json_output(output: str | None, payload: dict[str, Any]) -> None:
 def _write_jsonl_output(output: str | None, rows: list[dict[str, Any]]) -> None:
     rendered = "\n".join(json.dumps(row) for row in rows)
     if output:
-        Path(output).write_text(rendered + ("\n" if rendered else ""), encoding="utf-8")
+        atomic_write_text(output, rendered + ("\n" if rendered else ""))
         return
     if rendered:
         click.echo(rendered)
+
+
+def _emit_cli_error(exc: BaseException) -> None:
+    if _cli_verbose_enabled():
+        click.echo("".join(traceback.format_exception(exc)), err=True, nl=False)
+        return
+
+    stream = click.get_text_stream("stderr")
+    if isinstance(exc, click.ClickException):
+        exc.show(file=stream)
+        return
+    if isinstance(exc, FileNotFoundError) and exc.filename:
+        click.ClickException(f"File not found: {exc.filename}").show(file=stream)
+        return
+
+    message = str(exc) or exc.__class__.__name__
+    click.ClickException(message).show(file=stream)
+
+
+def _cli_verbose_enabled() -> bool:
+    ctx = click.get_current_context(silent=True)
+    if ctx is None:
+        return False
+    root = ctx.find_root()
+    return bool(root.obj and root.obj.get("verbose"))
+
+
+def _emit_diagnostics_summary() -> None:
+    summary = DEFAULT_DIAGNOSTICS.render_summary()
+    if summary:
+        LOGGER.warning(summary)
 
 
 def _normalize_kind_name(name: str) -> str:
@@ -160,12 +202,16 @@ def _build_benchmark_runner(model: str, workers: int):
     )
 
 
-@click.group(
-    help="SVA Toolkit unified CLI for parsing, formal analysis, timing, generation, description, and data workflows."
-)
+@click.group(help="SVA Toolkit unified CLI for parsing, formal analysis, timing, generation, description, and data workflows.")
 @click.version_option(__version__, prog_name="sva")
-def main() -> None:
+@click.option("--verbose", is_flag=True, help="Print full exception tracebacks, including chained causes.")
+@click.pass_context
+def main(ctx: click.Context, verbose: bool) -> None:
     """Top-level `sva` command group."""
+    DEFAULT_DIAGNOSTICS.reset()
+    configure_cli_logging(1 if verbose else 0)
+    ctx.ensure_object(dict)
+    ctx.obj["verbose"] = verbose
 
 
 @main.group(help="Formal verification commands.")
@@ -191,7 +237,6 @@ def data() -> None:
 @main.command("parse")
 @click.argument("sva_code_or_file")
 @click.option("--format", "output_format", type=click.Choice(["json", "text"]), default="text", show_default=True)
-@_handle_cli_errors
 def parse_command(sva_code_or_file: str, output_format: str) -> None:
     """Parse a SystemVerilog assertion and display its structure."""
     from sva_toolkit.sva import parse_property_text
@@ -206,7 +251,6 @@ def parse_command(sva_code_or_file: str, output_format: str) -> None:
 @click.option("--backend", type=click.Choice(["auto", "ebmc", "vcformal"]), default="auto", show_default=True)
 @click.option("--timeout", type=int, default=300, show_default=True)
 @click.option("--depth", type=int, default=20, show_default=True)
-@_handle_cli_errors
 def formal_check(antecedent: str, consequent: str, backend: str, timeout: int, depth: int) -> None:
     """Check whether ANTECEDENT implies CONSEQUENT."""
     from sva_toolkit.formal.model import ImplicationResult
@@ -223,7 +267,6 @@ def formal_check(antecedent: str, consequent: str, backend: str, timeout: int, d
 @click.option("--backend", type=click.Choice(["auto", "ebmc", "vcformal"]), default="auto", show_default=True)
 @click.option("--timeout", type=int, default=300, show_default=True)
 @click.option("--depth", type=int, default=20, show_default=True)
-@_handle_cli_errors
 def formal_equivalent(sva1: str, sva2: str, backend: str, timeout: int, depth: int) -> None:
     """Check whether SVA1 and SVA2 are equivalent."""
     from sva_toolkit.formal.model import ImplicationResult
@@ -240,7 +283,6 @@ def formal_equivalent(sva1: str, sva2: str, backend: str, timeout: int, depth: i
 @click.option("--backend", type=click.Choice(["auto", "ebmc", "vcformal"]), default="auto", show_default=True)
 @click.option("--timeout", type=int, default=300, show_default=True)
 @click.option("--depth", type=int, default=20, show_default=True)
-@_handle_cli_errors
 def formal_relationship(sva1: str, sva2: str, backend: str, timeout: int, depth: int) -> None:
     """Determine the implication relationship between SVA1 and SVA2."""
     forward, reverse = _build_formal_service(backend, timeout, depth).get_relationship(sva1, sva2)
@@ -252,7 +294,6 @@ def formal_relationship(sva1: str, sva2: str, backend: str, timeout: int, depth:
 @click.argument("input_file", type=click.Path(exists=True, dir_okay=False))
 @click.option("-o", "--output", type=click.Path(dir_okay=False))
 @click.option("--format", "output_format", type=click.Choice(["svg", "png"]), default="svg", show_default=True)
-@_handle_cli_errors
 def timing_render(input_file: str, output: str | None, output_format: str) -> None:
     """Render a timing diagram file to SVG or PNG."""
     from sva_toolkit.timing.frontend.parser import parse_diagram
@@ -270,7 +311,6 @@ def timing_render(input_file: str, output: str | None, output_format: str) -> No
 
 @timing.command("validate")
 @click.argument("input_file", type=click.Path(exists=True, dir_okay=False))
-@_handle_cli_errors
 def timing_validate(input_file: str) -> None:
     """Validate a timing diagram file."""
     from sva_toolkit.timing.frontend.parser import parse_diagram
@@ -285,7 +325,6 @@ def timing_validate(input_file: str) -> None:
 @click.option(
     "--allow-lossy", is_flag=True, help="Allow unsupported constructs to be emitted with lossy approximations."
 )
-@_handle_cli_errors
 def timing_emit_sva(input_file: str, output: str | None, allow_lossy: bool) -> None:
     """Emit parameterized SVA from a timing diagram file."""
     from sva_toolkit.timing.bridge.emit_sva import emit_parameterized_sva
@@ -300,15 +339,14 @@ def timing_emit_sva(input_file: str, output: str | None, allow_lossy: bool) -> N
 @click.option("-o", "--output", type=click.Path(dir_okay=False))
 @click.option("--depth", type=int, default=32, show_default=True)
 @click.option("--timeout", type=int, default=60, show_default=True)
-@_handle_cli_errors
 def timing_extract_sva(input_file: str, output: str | None, depth: int, timeout: int) -> None:
     """Extract timing DSL scenarios from an SVA source file."""
-    from sva_toolkit.timing.bridge.status import summarize_report
     from sva_toolkit.timing.bridge.to_dsl import emit_timing_dsl
 
     documents, report = _extract_sva_documents(input_file, depth=depth, timeout=timeout)
+    _record_timing_report(report)
     if report.worst_status().value != "exact":
-        click.echo(f"WARNING {summarize_report(report)}", err=True)
+        return
     rendered = "\n\n".join(emit_timing_dsl(document) for document in documents)
     _write_text_output(output, rendered)
 
@@ -316,11 +354,10 @@ def timing_extract_sva(input_file: str, output: str | None, depth: int, timeout:
 @timing.command("bundle-sva")
 @click.argument("input_files", nargs=-1, type=click.Path(exists=True, dir_okay=False))
 @click.option("-o", "--output", type=click.Path(dir_okay=False))
-@_handle_cli_errors
 def timing_bundle_sva(input_files: tuple[str, ...], output: str | None) -> None:
     """Bundle related SVA files into grouped timing scenarios."""
     from sva_toolkit.timing.bridge.from_sva import bundle_sva_scenarios
-    from sva_toolkit.timing.bridge.status import merge_extraction_reports, summarize_report
+    from sva_toolkit.timing.bridge.status import merge_extraction_reports
     from sva_toolkit.timing.bridge.to_dsl import emit_timing_dsl
 
     if not input_files:
@@ -330,8 +367,9 @@ def timing_bundle_sva(input_files: tuple[str, ...], output: str | None) -> None:
     scenarios = tuple(document for documents, _ in extracted for document in documents)
     bundled_scenarios, bundle_report = bundle_sva_scenarios(scenarios)
     report = merge_extraction_reports(*(report for _, report in extracted), bundle_report)
+    _record_timing_report(report)
     if report.worst_status().value != "exact":
-        click.echo(f"WARNING {summarize_report(report)}", err=True)
+        return
     rendered = "\n\n".join(emit_timing_dsl(document) for document in bundled_scenarios)
     _write_text_output(output, rendered)
 
@@ -341,7 +379,6 @@ def timing_bundle_sva(input_files: tuple[str, ...], output: str | None) -> None:
 @click.option("--mode", type=click.Choice(["random", "stratified"]), default="random", show_default=True)
 @click.option("--validate", is_flag=True, help="Validate generated assertions with Verible when available.")
 @click.option("--coverage", is_flag=True, help="Append coverage statistics for the generated assertions.")
-@_handle_cli_errors
 def generate_command(count: int, mode: str, validate: bool, coverage: bool, seed: int | None = None) -> None:
     """Generate SVA properties using the V3 generator module."""
     from sva_toolkit.generate import (
@@ -389,16 +426,11 @@ def generate_command(count: int, mode: str, validate: bool, coverage: bool, seed
             f"({stats['coverage_pct']:.1f}%)"
         )
 
-
-_register_generate_flags(main)
-
-
 @describe.command("svad")
 @click.argument("sva_code_or_file")
 @click.option(
     "--format", "output_format", type=click.Choice(["text", "json", "markdown"]), default="text", show_default=True
 )
-@_handle_cli_errors
 def describe_svad(sva_code_or_file: str, output_format: str) -> None:
     """Render an SVAD description for an assertion."""
     from sva_toolkit.describe import SVADTranslator
@@ -415,7 +447,6 @@ def describe_svad(sva_code_or_file: str, output_format: str) -> None:
 @click.option(
     "--format", "output_format", type=click.Choice(["text", "json", "markdown"]), default="text", show_default=True
 )
-@_handle_cli_errors
 def describe_cot(sva_code_or_file: str, output_format: str) -> None:
     """Render chain-of-thought style reasoning for an assertion."""
     from sva_toolkit.describe import SVACoTBuilder
@@ -432,7 +463,6 @@ def describe_cot(sva_code_or_file: str, output_format: str) -> None:
 @click.option("-o", "--output", type=click.Path(dir_okay=False))
 @click.option("--model", default=None, help="Optional LLM model name for SVAD generation.")
 @click.option("--workers", type=int, default=4, show_default=True)
-@_handle_cli_errors
 def data_build(input_json: str, output: str | None, model: str | None, workers: int) -> None:
     """Build a dataset JSONL file from SVA source records."""
     from sva_toolkit.data import DatasetEntry
@@ -455,7 +485,6 @@ def data_build(input_json: str, output: str | None, model: str | None, workers: 
 @click.option("--model", default=None, help="LLM model name used to generate benchmark predictions.")
 @click.option("--workers", type=int, default=4, show_default=True)
 @click.option("-o", "--output", type=click.Path(dir_okay=False))
-@_handle_cli_errors
 def data_benchmark(dataset_json: str, model: str | None, workers: int, output: str | None) -> None:
     """Benchmark model-generated SVA against a reference dataset."""
     resolved_model = model or os.getenv("SVA_TOOLKIT_MODEL")
@@ -472,6 +501,23 @@ def data_benchmark(dataset_json: str, model: str | None, workers: int, output: s
     )
     payload = result.to_dict() if hasattr(result, "to_dict") else _to_json_compatible(result)
     _write_json_output(output, payload)
+
+
+_register_formal_flags(formal)
+_register_timing_flags(timing)
+_register_generate_flags(main)
+
+
+def _install_cli_error_handlers(command: click.Command) -> None:
+    if isinstance(command, click.Group):
+        for child in command.commands.values():
+            _install_cli_error_handlers(child)
+        return
+    if command.callback is not None:
+        command.callback = _handle_cli_errors(command.callback)
+
+
+_install_cli_error_handlers(main)
 
 
 if __name__ == "__main__":

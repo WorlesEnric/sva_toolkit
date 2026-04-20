@@ -7,6 +7,7 @@ from typing import Any
 
 import click
 
+from sva_toolkit.cli.exit_codes import BackendUnavailableError, ReportedParseError
 from sva_toolkit.formal import FormalService
 from sva_toolkit.formal.model import (
     CheckResult,
@@ -18,6 +19,7 @@ from sva_toolkit.formal.model import (
     UnsupportedClockingError,
 )
 from sva_toolkit.formal.sanitize import IdentifierError
+from sva_toolkit.runtime.errors import ToolMissingError
 
 
 def register(formal_group: click.Group) -> None:
@@ -95,6 +97,7 @@ def _formal_check_callback(**kwargs: Any) -> None:
             reset=kwargs["reset"],
         )
     )
+    _raise_for_terminal_result(result, backend=kwargs["backend"])
     _echo_check_result(result)
     if result.result is not ImplicationResult.IMPLIES:
         raise SystemExit(1)
@@ -115,6 +118,7 @@ def _formal_equivalent_callback(**kwargs: Any) -> None:
             reset=kwargs["reset"],
         )
     )
+    _raise_for_terminal_result(result, backend=kwargs["backend"])
     _echo_check_result(result)
     if result.result is not ImplicationResult.EQUIVALENT:
         raise SystemExit(1)
@@ -126,8 +130,8 @@ def _formal_relationship_callback(**kwargs: Any) -> None:
         timeout=kwargs["timeout"],
         depth=kwargs["depth"],
     )
-    forward, reverse = _run_with_cli_errors(
-        lambda: service.get_relationship(
+    forward = _run_with_cli_errors(
+        lambda: service.check_implication(
             kwargs["sva1"],
             kwargs["sva2"],
             clock=kwargs["clock"],
@@ -135,8 +139,42 @@ def _formal_relationship_callback(**kwargs: Any) -> None:
             reset=kwargs["reset"],
         )
     )
-    click.echo(f"SVA1 implies SVA2: {'yes' if forward else 'no'}")
-    click.echo(f"SVA2 implies SVA1: {'yes' if reverse else 'no'}")
+    _raise_for_terminal_result(forward, backend=kwargs["backend"])
+
+    reverse = _run_with_cli_errors(
+        lambda: service.check_implication(
+            kwargs["sva2"],
+            kwargs["sva1"],
+            clock=kwargs["clock"],
+            clock_edge=kwargs["clock_edge"],
+            reset=kwargs["reset"],
+        )
+    )
+    _raise_for_terminal_result(reverse, backend=kwargs["backend"])
+
+    click.echo(f"SVA1 implies SVA2: {'yes' if forward.result is ImplicationResult.IMPLIES else 'no'}")
+    click.echo(f"SVA2 implies SVA1: {'yes' if reverse.result is ImplicationResult.IMPLIES else 'no'}")
+
+
+def _raise_for_terminal_result(result: CheckResult, *, backend: str) -> None:
+    if result.result is ImplicationResult.SYNTAX_ERROR:
+        raise click.ClickException(result.message) from ReportedParseError(result.message)
+    if result.result is ImplicationResult.TIMEOUT:
+        raise TimeoutError(result.message)
+    if result.result is not ImplicationResult.ERROR:
+        return
+
+    if "No formal backend is available" in result.message:
+        raise click.ClickException(result.message) from ToolMissingError("formal backend", ("vcf", "ebmc"))
+
+    message_prefix = result.message.partition(".")[0]
+    lowered = message_prefix.lower()
+    if "ebmc executable is not available" in lowered:
+        raise click.ClickException(result.message) from ToolMissingError("ebmc", ("ebmc",))
+    if "vc formal executable is not available" in lowered:
+        raise click.ClickException(result.message) from ToolMissingError("vcf", ("vcf",))
+
+    raise click.ClickException(result.message) from BackendUnavailableError(result.message)
 
 
 def _run_with_cli_errors(function: Callable[[], Any]) -> Any:
