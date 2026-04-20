@@ -20,11 +20,14 @@ class StatementKind(str, Enum):
     ASSERT = "assert"
     ASSUME = "assume"
     COVER = "cover"
+    RESTRICT = "restrict"
+    EXPECT = "expect"
 
 
 class ClockEdge(str, Enum):
     POSEDGE = "posedge"
     NEGEDGE = "negedge"
+    EDGE = "edge"
 
 
 class UnaryOperator(str, Enum):
@@ -37,6 +40,8 @@ class UnaryOperator(str, Enum):
 class BinaryOperator(str, Enum):
     LOGICAL_AND = "&&"
     LOGICAL_OR = "||"
+    IMPLIES = "->"
+    IFF = "<->"
     BITWISE_AND = "&"
     BITWISE_OR = "|"
     BITWISE_XOR = "^"
@@ -74,12 +79,17 @@ class PropertyBinaryOperator(str, Enum):
     OR = "or"
     UNTIL = "until"
     UNTIL_WITH = "until_with"
+    S_UNTIL = "s_until"
+    S_UNTIL_WITH = "s_until_with"
+    IMPLIES = "implies"
+    IFF = "iff"
 
 
 class RepeatOperator(str, Enum):
     CONSECUTIVE = "[*]"
     NON_CONSECUTIVE = "[=]"
     GOTO = "[->]"
+    ONE_OR_MORE = "[+]"
 
 
 class ControlOperator(str, Enum):
@@ -135,6 +145,25 @@ class CallExpr(Node):
 
 
 @dataclass(frozen=True, slots=True)
+class Inside(Node):
+    expr: "ExprNode"
+    items: tuple["ExprNode", ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class DistItem(Node):
+    value: "ExprNode"
+    weight: "ExprNode | None" = None
+    per_item: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Dist(Node):
+    expr: "ExprNode"
+    items: tuple[DistItem, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class CycleRange(Node):
     minimum: "ExprNode"
     maximum: "ExprNode | None" = None
@@ -154,6 +183,8 @@ ExprNode: TypeAlias = (
     | BinaryExpr
     | TernaryExpr
     | CallExpr
+    | Inside
+    | Dist
     | SequenceEndedExpr
 )
 
@@ -178,6 +209,22 @@ class RepeatSequence(Node):
 
 
 @dataclass(frozen=True, slots=True)
+class Within(Node):
+    left: "SequenceNode"
+    right: "SequenceNode"
+
+
+@dataclass(frozen=True, slots=True)
+class Matched(Node):
+    sequence: "SequenceNode"
+
+
+@dataclass(frozen=True, slots=True)
+class Ended(Node):
+    sequence: "SequenceNode"
+
+
+@dataclass(frozen=True, slots=True)
 class SequenceBinary(Node):
     left: "SequenceNode"
     op: SequenceBinaryOperator
@@ -197,8 +244,13 @@ class SequenceMatchItem(Node):
 
 
 @dataclass(frozen=True, slots=True)
+class MultiEventClocking(Node):
+    events: tuple["ClockingEvent", ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class ClockingSequence(Node):
-    clocking: "ClockingEvent"
+    clocking: "ClockingEvent | MultiEventClocking"
     body: "SequenceNode"
 
 
@@ -216,6 +268,9 @@ SequenceNode: TypeAlias = (
     ExprSequence
     | DelaySequence
     | RepeatSequence
+    | Within
+    | Matched
+    | Ended
     | SequenceBinary
     | SequenceMatch
     | ClockingSequence
@@ -227,6 +282,47 @@ SequenceNode: TypeAlias = (
 @dataclass(frozen=True, slots=True)
 class UnaryProperty(Node):
     op: PropertyUnaryOperator
+    operand: "PropertyNode"
+
+
+@dataclass(frozen=True, slots=True)
+class Nexttime(Node):
+    operand: "PropertyNode"
+    cycle_delay: CycleRange | None = None
+    strong: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Always(Node):
+    operand: "PropertyNode"
+    cycle_range: CycleRange | None = None
+    strong: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Eventually(Node):
+    operand: "PropertyNode"
+    cycle_range: CycleRange | None = None
+    strong: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Strong(Node):
+    operand: "SequenceNode | PropertyNode"
+
+
+@dataclass(frozen=True, slots=True)
+class Weak(Node):
+    operand: "SequenceNode | PropertyNode"
+
+
+@dataclass(frozen=True, slots=True)
+class Restrict(Node):
+    operand: "PropertyNode"
+
+
+@dataclass(frozen=True, slots=True)
+class Expect(Node):
     operand: "PropertyNode"
 
 
@@ -266,12 +362,56 @@ class OpaqueProperty(Node):
 PropertyNode: TypeAlias = (
     SequenceNode
     | UnaryProperty
+    | Nexttime
+    | Always
+    | Eventually
+    | Strong
+    | Weak
+    | Restrict
+    | Expect
     | ImplicationProperty
     | PropertyBinary
     | IfElseProperty
     | ControlProperty
     | OpaqueProperty
 )
+
+
+@dataclass(frozen=True, slots=True)
+class SequenceDecl(Node):
+    name: str
+    formals: tuple["PropertyFormal", ...] = ()
+    local_vars: tuple["LocalVarDecl", ...] = ()
+    body: "SequenceNode | None" = None
+
+
+@dataclass(frozen=True, slots=True)
+class CheckerDecl(Node):
+    name: str
+    formals: tuple["PropertyFormal", ...] = ()
+    items: tuple[Node, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class Bind(Node):
+    target: ExprNode | None = None
+    instance_name: str | None = None
+    checker_name: str | None = None
+    args: tuple[ExprNode, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ClockingDecl(Node):
+    name: str | None = None
+    default: bool = False
+    event: "ClockingEvent | MultiEventClocking | None" = None
+
+
+@dataclass(frozen=True, slots=True)
+class LetDecl(Node):
+    name: str
+    formals: tuple["PropertyFormal", ...] = ()
+    body: "ExprNode | SequenceNode | PropertyNode | None" = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -303,20 +443,29 @@ class PropertySpec(Node):
     statement_kind: StatementKind | None = None
     formals: tuple[PropertyFormal, ...] = ()
     local_vars: tuple[LocalVarDecl, ...] = ()
-    clocking: ClockingEvent | None = None
+    clocking: ClockingEvent | MultiEventClocking | None = None
     disable_iff: ExprNode | None = None
 
 
 __all__ = [
+    "Always",
     "BinaryExpr",
     "BinaryOperator",
+    "Bind",
     "CallExpr",
+    "CheckerDecl",
     "ClockEdge",
+    "ClockingDecl",
     "ClockingEvent",
     "ControlOperator",
     "ControlProperty",
     "CycleRange",
     "DelaySequence",
+    "Dist",
+    "DistItem",
+    "Ended",
+    "Eventually",
+    "Expect",
     "ExprNode",
     "ExprSequence",
     "FirstMatchSequence",
@@ -324,8 +473,13 @@ __all__ = [
     "IfElseProperty",
     "ImplicationOperator",
     "ImplicationProperty",
+    "Inside",
+    "LetDecl",
     "Literal",
     "LocalVarDecl",
+    "Matched",
+    "MultiEventClocking",
+    "Nexttime",
     "Node",
     "OpaqueExpr",
     "OpaqueProperty",
@@ -338,14 +492,19 @@ __all__ = [
     "PropertyUnaryOperator",
     "RepeatOperator",
     "RepeatSequence",
+    "Restrict",
     "SequenceBinary",
     "SequenceBinaryOperator",
+    "SequenceDecl",
     "SequenceEndedExpr",
     "SequenceNode",
     "SourceSpan",
     "StatementKind",
+    "Strong",
     "TernaryExpr",
     "UnaryExpr",
     "UnaryOperator",
     "UnaryProperty",
+    "Weak",
+    "Within",
 ]

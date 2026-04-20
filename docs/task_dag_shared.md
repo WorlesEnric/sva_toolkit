@@ -127,7 +127,7 @@ flowchart TD
 | T03     | Codex-T03      | DONE        | 100        | 2026-04-20  | —        | Delivered process-group timeout handling, typed `ToolMissingError`, and runtime regression tests |
 | T04     | codex-t4       | DONE        | 100        | 2026-04-20  | —        | Delivered seedable `GenerationRng`, CLI `--seed`, determinism tests; T14 now unblocked |
 | T05     | codex-t05      | DONE        | 100        | 2026-04-20  | —        | Sanitizer landed; T08 can reuse `formal/sanitize.py` while removing defaults |
-| T06     | —              | NOT_STARTED | 0          | 2026-04-19  | T01      | Wait for T01 DONE, then expand lexer keyword set and AST dataclasses        |
+| T06     | Codex-T06      | DONE        | 100        | 2026-04-20  | —        | Expanded lexer keyword/operator coverage, added placeholder AST nodes, and passed `pytest -q sva-toolkit/tests/sva` plus `ruff check` |
 | T07     | —              | NOT_STARTED | 0          | 2026-04-19  | T06      | Wait for T06 DONE, then expand parser/emitter and surface opaque downgrades |
 | T08     | —              | NOT_STARTED | 0          | 2026-04-19  | T05, T07 | Wait for T05 and T07 DONE, then remove hard-coded clock/reset defaults      |
 | T09     | —              | NOT_STARTED | 0          | 2026-04-19  | T07      | Wait for T07 DONE, then fill NL templates and add uncertainty markers       |
@@ -395,3 +395,5 @@ Append new entries at the bottom. Never rewrite history.
 - 2026-04-20 18:03 — T05 — codex-t05 — IN_PROGRESS -> DONE — Added shared formal sanitizer, migrated EBMC/VCF templates off `str.format`, and passed `pytest -q tests/formal` plus `ruff check` on touched files.
 - 2026-04-20 18:00 — T03 — Codex-T03 — NOT_STARTED -> IN_PROGRESS — Claimed task and began runtime/process hardening plus typed tool-error work.
 - 2026-04-20 18:10 — T03 — Codex-T03 — IN_PROGRESS -> DONE — Added POSIX process-group timeout cleanup, typed `ToolMissingError`, runtime orphan regression coverage, and flagged the Windows caveat for T15/LIMITATIONS.
+- 2026-04-20 18:31 — T06 — Codex-T06 — NOT_STARTED -> IN_PROGRESS — Claimed lexer keyword expansion + AST task; auditing token coverage, placeholder nodes, and lexer-owned tests before implementation.
+- 2026-04-20 18:45 — T06 — Codex-T06 — IN_PROGRESS -> DONE — Added missing keyword/operator tokens, placeholder AST nodes and exports, lexer coverage, and passed `pytest -q sva-toolkit/tests/sva` plus `ruff check`.

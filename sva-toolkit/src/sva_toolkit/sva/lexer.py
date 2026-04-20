@@ -12,6 +12,7 @@ from sva_toolkit.sva.trivia import Trivia, collect_trivia, consume_string_litera
 class TokenKind(str, Enum):
     IDENT = "IDENT"
     LITERAL = "LITERAL"
+    DOLLAR = "LITERAL"
     STRING = "STRING"
     DOLLAR_IDENT = "DOLLAR_IDENT"
     PROPERTY = "property"
@@ -19,6 +20,16 @@ class TokenKind(str, Enum):
     ASSERT = "assert"
     ASSUME = "assume"
     COVER = "cover"
+    RESTRICT = "restrict"
+    EXPECT = "expect"
+    SEQUENCE = "sequence"
+    ENDSEQUENCE = "endsequence"
+    CHECKER = "checker"
+    ENDCHECKER = "endchecker"
+    BIND = "bind"
+    CLOCKING = "clocking"
+    ENDCLOCKING = "endclocking"
+    LET = "let"
     DISABLE = "disable"
     IFF = "iff"
     IF = "if"
@@ -26,10 +37,25 @@ class TokenKind(str, Enum):
     AND = "and"
     OR = "or"
     NOT = "not"
+    NEXTTIME = "nexttime"
+    S_NEXTTIME = "s_nexttime"
+    ALWAYS = "always"
+    S_ALWAYS = "s_always"
+    EVENTUALLY = "eventually"
+    S_EVENTUALLY = "s_eventually"
+    STRONG = "strong"
+    WEAK = "weak"
     INTERSECT = "intersect"
     THROUGHOUT = "throughout"
+    WITHIN = "within"
+    MATCHED = "matched"
+    INSIDE = "inside"
+    DIST = "dist"
     UNTIL = "until"
     UNTIL_WITH = "until_with"
+    S_UNTIL = "s_until"
+    S_UNTIL_WITH = "s_until_with"
+    IMPLIES = "implies"
     FIRST_MATCH = "first_match"
     ACCEPT_ON = "accept_on"
     REJECT_ON = "reject_on"
@@ -37,8 +63,15 @@ class TokenKind(str, Enum):
     SYNC_REJECT_ON = "sync_reject_on"
     POSEDGE = "posedge"
     NEGEDGE = "negedge"
+    EDGE = "edge"
     LOCAL = "local"
     VAR = "var"
+    BIT = "bit"
+    LOGIC = "logic"
+    REG = "reg"
+    WIRE = "wire"
+    INPUT = "input"
+    OUTPUT = "output"
     LPAREN = "("
     RPAREN = ")"
     LBRACKET = "["
@@ -50,6 +83,11 @@ class TokenKind(str, Enum):
     QUESTION = "?"
     AT = "@"
     HASH_HASH = "##"
+    LT_MINUS_GT = "<->"
+    EQ_EQ_GT = "==>"
+    MINUS_GT = "->"
+    LBRACKET_PLUS_RBRACKET = "[+]"
+    LBRACKET_STAR_RBRACKET = "[*]"
     PLUS = "+"
     MINUS = "-"
     STAR = "*"
@@ -91,6 +129,16 @@ _KEYWORDS = {
     "assert": TokenKind.ASSERT,
     "assume": TokenKind.ASSUME,
     "cover": TokenKind.COVER,
+    "restrict": TokenKind.RESTRICT,
+    "expect": TokenKind.EXPECT,
+    "sequence": TokenKind.SEQUENCE,
+    "endsequence": TokenKind.ENDSEQUENCE,
+    "checker": TokenKind.CHECKER,
+    "endchecker": TokenKind.ENDCHECKER,
+    "bind": TokenKind.BIND,
+    "clocking": TokenKind.CLOCKING,
+    "endclocking": TokenKind.ENDCLOCKING,
+    "let": TokenKind.LET,
     "disable": TokenKind.DISABLE,
     "iff": TokenKind.IFF,
     "if": TokenKind.IF,
@@ -98,10 +146,25 @@ _KEYWORDS = {
     "and": TokenKind.AND,
     "or": TokenKind.OR,
     "not": TokenKind.NOT,
+    "nexttime": TokenKind.NEXTTIME,
+    "s_nexttime": TokenKind.S_NEXTTIME,
+    "always": TokenKind.ALWAYS,
+    "s_always": TokenKind.S_ALWAYS,
+    "eventually": TokenKind.EVENTUALLY,
+    "s_eventually": TokenKind.S_EVENTUALLY,
+    "strong": TokenKind.STRONG,
+    "weak": TokenKind.WEAK,
     "intersect": TokenKind.INTERSECT,
     "throughout": TokenKind.THROUGHOUT,
+    "within": TokenKind.WITHIN,
+    "matched": TokenKind.MATCHED,
+    "inside": TokenKind.INSIDE,
+    "dist": TokenKind.DIST,
     "until": TokenKind.UNTIL,
     "until_with": TokenKind.UNTIL_WITH,
+    "s_until": TokenKind.S_UNTIL,
+    "s_until_with": TokenKind.S_UNTIL_WITH,
+    "implies": TokenKind.IMPLIES,
     "first_match": TokenKind.FIRST_MATCH,
     "accept_on": TokenKind.ACCEPT_ON,
     "reject_on": TokenKind.REJECT_ON,
@@ -109,13 +172,24 @@ _KEYWORDS = {
     "sync_reject_on": TokenKind.SYNC_REJECT_ON,
     "posedge": TokenKind.POSEDGE,
     "negedge": TokenKind.NEGEDGE,
+    "edge": TokenKind.EDGE,
     "local": TokenKind.LOCAL,
     "var": TokenKind.VAR,
+    "bit": TokenKind.BIT,
+    "logic": TokenKind.LOGIC,
+    "reg": TokenKind.REG,
+    "wire": TokenKind.WIRE,
+    "input": TokenKind.INPUT,
+    "output": TokenKind.OUTPUT,
 }
 
 _MULTI_CHAR_TOKENS = (
+    ("<->", TokenKind.LT_MINUS_GT),
+    ("==>", TokenKind.EQ_EQ_GT),
     ("|=>", TokenKind.BAR_FAT_ARROW),
     ("|->", TokenKind.BAR_ARROW),
+    ("[+]", TokenKind.LBRACKET_PLUS_RBRACKET),
+    ("[*]", TokenKind.LBRACKET_STAR_RBRACKET),
     ("===", TokenKind.EQ_EQ_EQ),
     ("!==", TokenKind.BANG_EQ_EQ),
     ("==", TokenKind.EQ_EQ),
@@ -213,7 +287,7 @@ def _consume_token(text: str, index: int) -> tuple[Token, int]:
                 index += 1
             return Token(TokenKind.DOLLAR_IDENT, text[start:index], SourceSpan(start, index)), index
         index += 1
-        return Token(TokenKind.LITERAL, text[start:index], SourceSpan(start, index)), index
+        return Token(TokenKind.DOLLAR, text[start:index], SourceSpan(start, index)), index
 
     if char == "\\":
         end = _consume_escaped_identifier(text, index)
@@ -226,6 +300,10 @@ def _consume_token(text: str, index: int) -> tuple[Token, int]:
         token_text = text[start:index]
         kind = _KEYWORDS.get(token_text.lower(), TokenKind.IDENT)
         return Token(kind, token_text, SourceSpan(start, index)), index
+
+    if text.startswith("->", index) and not _is_goto_repeat_operator(text, index):
+        end = index + 2
+        return Token(TokenKind.MINUS_GT, text[start:end], SourceSpan(start, end)), end
 
     for operator, kind in _MULTI_CHAR_TOKENS:
         if text.startswith(operator, index):
@@ -266,6 +344,13 @@ def _consume_numeric_literal(text: str, index: int) -> int:
     while index < length and (text[index].isalnum() or text[index] in {"_", "?", "x", "X", "z", "Z"}):
         index += 1
     return index
+
+
+def _is_goto_repeat_operator(text: str, index: int) -> bool:
+    previous = index - 1
+    while previous >= 0 and text[previous].isspace():
+        previous -= 1
+    return previous >= 0 and text[previous] == "["
 
 
 __all__ = ["Token", "TokenKind", "tokenize", "tokenize_with_trivia"]
