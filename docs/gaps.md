@@ -515,3 +515,12 @@ No coverage configuration (`coveragerc`, pytest-cov invocation in
 The toolkit is a capable prototype that is one hardening pass away from being
 dependable for internal tooling; it is several passes away from being
 dependable as part of a sign-off flow.
+
+## 9. Canonical user references
+
+This file remains the detailed audit baseline. For the current user-facing
+answer to "what does the toolkit support, and what does it still not support?",
+use:
+
+- [SUPPORTED_FEATURES.md](SUPPORTED_FEATURES.md)
+- [LIMITATIONS.md](LIMITATIONS.md)

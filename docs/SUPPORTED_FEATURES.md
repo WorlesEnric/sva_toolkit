@@ -1,74 +1,103 @@
-# SVA Toolkit V3 — Supported Features (scaffold)
+# SVA Toolkit V3 — Supported Features
 
-SCAFFOLD SUMMARY — replace this document with the real user-facing
-feature inventory in task T15.
+This is the canonical user-facing inventory of what `sva-toolkit` does support
+today on the current `v3.0.0a1` code line. Use it together with
+[LIMITATIONS.md](LIMITATIONS.md). Source and test references below point to the
+current repository state.
 
-This file is the canonical list of what the toolkit **does** support
-after the gap-remediation pass described in `docs/task_dag_planning.md`.
-It is the document users should consult when evaluating whether
-`sva-toolkit` fits their workflow, and it is the document that will be
-referenced by the top-level `README.md` capabilities matrix.
+## Quick Capability Matrix
 
-Each feature row must have:
+| Area | Supported today | Primary refs |
+| --- | --- | --- |
+| Parsing and round-trip | Native SVA lexer/parser/emitter for assertion/property surfaces, including modern temporal and structural constructs. | `sva-toolkit/src/sva_toolkit/sva/lexer.py:12`, `sva-toolkit/src/sva_toolkit/sva/parser.py:121`, `sva-toolkit/tests/sva/test_parser_temporal.py:1`, `sva-toolkit/tests/sva/test_parser_structural.py:1` |
+| Formal | Implication, equivalence, and relationship checks with explicit clock/reset annotation and EBMC / VC Formal backend selection. | `sva-toolkit/src/sva_toolkit/formal/service.py:13`, `sva-toolkit/src/sva_toolkit/cli/formal_flags.py:17`, [sva-formal.md](sva-formal.md) |
+| Timing | Grammar-based timing DSL parse/validate/render, SVA emission, and SVA extraction/bundling with exact/lossy/unsupported reporting. | `sva-toolkit/src/sva_toolkit/timing/frontend/grammar.py:206`, `sva-toolkit/src/sva_toolkit/timing/bridge/status.py:33`, [sva-timing.md](sva-timing.md) |
+| Generation | Deterministic generation with `--seed`, optional syntax validation, and construct-coverage statistics over generated properties. | `sva-toolkit/src/sva_toolkit/generate/rng.py:14`, `sva-toolkit/src/sva_toolkit/cli/generate_flags.py:8`, [sva-generate.md](sva-generate.md) |
+| Description | SVAD and CoT outputs, dedicated templates for the shipped `$`-functions, and `[unverified]` markers when opaque fallback fragments survive. | `sva-toolkit/src/sva_toolkit/describe/translator.py:197`, `sva-toolkit/src/sva_toolkit/describe/cot.py:98`, [sva-describe.md](sva-describe.md) |
+| Data workflows | Offline dataset build, optional LLM-backed SVAD generation, multiprocess-safe cache files, retry/backoff, and benchmark result aggregation. | `sva-toolkit/src/sva_toolkit/data/dataset.py:202`, `sva-toolkit/src/sva_toolkit/data/benchmark.py:229`, [sva-data.md](sva-data.md) |
+| Runtime guarantees | Atomic file writes for key CLI/cache paths, diagnostics summaries, typed exit codes, and POSIX timeout process-group cleanup. | `sva-toolkit/src/sva_toolkit/runtime/atomic_io.py:15`, `sva-toolkit/src/sva_toolkit/runtime/diagnostics.py:33`, `sva-toolkit/src/sva_toolkit/runtime/process.py:34` |
+| Compatibility | Python `>=3.11`; CI covers Python `3.11` and `3.12` on Ubuntu. | `sva-toolkit/pyproject.toml:7`, `sva-toolkit/.github/workflows/ci.yml:1` |
 
-- A unique ID (`F-01`, `F-02`, …) that never changes once published.
-- A feature name and a one-sentence summary.
-- The CLI command(s) that expose it.
-- The Python API entry point(s) that expose it.
-- The relevant source file(s) in `src/sva_toolkit/...`.
-- The relevant test(s) in `tests/...` that prove it.
-- Whether an optional extra is required (`timing-render`, `llm`,
-  `formal`, `all`).
+## CLI Command Surface
 
-The sections the T15 worker must produce:
+| ID | Command | Inputs | Outputs | Exit codes | Optional dependencies | Refs / worked examples |
+| --- | --- | --- | --- | --- | --- | --- |
+| F-01 | `sva parse` | Inline property/assertion text or a file path containing one property surface; `--format text|json`. | Pretty-printed AST text or JSON AST dump to stdout. | `0` success, `4` parse error, `1` other CLI/runtime failure. | None. | `sva-toolkit/src/sva_toolkit/cli/main.py:237`, `sva-toolkit/tests/cli/test_main.py:45`, [sva-parse.md](sva-parse.md) |
+| F-02 | `sva formal check` | `ANTECEDENT` + `CONSEQUENT`, plus `--backend`, `--timeout`, `--depth`, `--clock`, `--clock-edge`, `--reset`. | Human-readable result/message plus optional counterexample/log. | `0` implies, `1` terminal non-implication or generic failure, `2` usage/missing annotation, `3` tool missing, `4` parse, `5` timeout, `7` backend unavailable. | `ebmc` or `vcf` on `PATH`. | `sva-toolkit/src/sva_toolkit/cli/main.py:248`, `sva-toolkit/src/sva_toolkit/cli/formal_flags.py:17`, `sva-toolkit/tests/cli/test_exit_codes.py:14`, [sva-formal.md](sva-formal.md) |
+| F-03 | `sva formal equivalent` | `SVA1` + `SVA2` with the same formal options as `check`. | Result/message plus optional combined logs. | `0` equivalent, `1` not equivalent or generic failure, `2/3/4/5/7` as above on setup/runtime errors. | `ebmc` or `vcf` on `PATH`. | `sva-toolkit/src/sva_toolkit/cli/main.py:264`, `sva-toolkit/src/sva_toolkit/cli/formal_flags.py:87`, [sva-formal.md](sva-formal.md) |
+| F-04 | `sva formal relationship` | `SVA1` + `SVA2` with the same formal options as `check`. | Two yes/no lines describing directional implication. | `0` success, `2/3/4/5/7` on setup/runtime errors. | `ebmc` or `vcf` on `PATH`. | `sva-toolkit/src/sva_toolkit/cli/main.py:280`, `sva-toolkit/src/sva_toolkit/cli/formal_flags.py:111`, [sva-formal.md](sva-formal.md) |
+| F-05 | `sva timing validate` | One timing DSL file. | `valid` on stdout if the file parses and validates. | `0` success, `4` DSL parse/validation error, `1` other failure. | None. | `sva-toolkit/src/sva_toolkit/cli/main.py:312`, `sva-toolkit/tests/integration/test_cli_timing.py:11`, [sva-timing.md](sva-timing.md) |
+| F-06 | `sva timing render` | One timing DSL file, `-o/--output`, `--format svg|png`. | SVG text/file or PNG file. | `0` success, `2` usage error for `--format png` without `--output`, `4` DSL parse error, `1` renderer/dependency failure. | `cairosvg` from `sva-toolkit[timing-render]` is required only for PNG. | `sva-toolkit/src/sva_toolkit/cli/main.py:293`, `sva-toolkit/src/sva_toolkit/timing/render/png.py:6`, `sva-toolkit/tests/timing/test_render_png.py:1`, [sva-timing.md](sva-timing.md) |
+| F-07 | `sva timing emit-sva` | One timing DSL file, optional `-o`, optional `--allow-lossy`. | Emitted SVA property blocks. | `0` success, `4` DSL parse error, `1` unsupported/lossy emission without `--allow-lossy` or other runtime failure. | None. | `sva-toolkit/src/sva_toolkit/cli/main.py:322`, `sva-toolkit/src/sva_toolkit/timing/bridge/emit_sva.py:260`, `sva-toolkit/tests/integration/test_cli_timing.py:31`, [sva-timing.md](sva-timing.md) |
+| F-08 | `sva timing extract-sva` | One SVA source file, optional `-o`, optional witness `--depth` / `--timeout`. | Timing DSL text only when extraction is fully exact. | `0` exact extraction, `6` lossy/unsupported extraction, `4` parse error, `1` other runtime failure. | None for parse-only extraction; witness refinement can use EBMC when available. | `sva-toolkit/src/sva_toolkit/cli/main.py:337`, `sva-toolkit/src/sva_toolkit/timing/bridge/status.py:96`, `sva-toolkit/tests/cli/test_exit_codes.py:79`, [sva-timing.md](sva-timing.md) |
+| F-09 | `sva timing bundle-sva` | Two or more SVA source files, optional `-o`. | Bundled timing DSL text only when every extracted property is exact. | `0` exact bundle, `6` lossy/unsupported bundle, `4` parse error, `1` other runtime failure. | None for parse-only bundling; witness refinement can use EBMC when available. | `sva-toolkit/src/sva_toolkit/cli/main.py:354`, `sva-toolkit/src/sva_toolkit/timing/bridge/status.py:104`, [sva-timing.md](sva-timing.md) |
+| F-10 | `sva generate` | `--count`, `--mode random|stratified`, `--seed`, optional `--validate`, optional `--coverage`. | Generated module text on stdout, optional coverage summary on stdout, and the chosen seed on stderr when `--seed` is omitted. | `0` success, `1` invalid validation result or other failure. | Verible (`verible-verilog-syntax`) only for `--validate`. | `sva-toolkit/src/sva_toolkit/cli/main.py:377`, `sva-toolkit/tests/generate/test_determinism.py:17`, [sva-generate.md](sva-generate.md) |
+| F-11 | `sva describe svad` | Inline SVA text or a file path; `--format text|json|markdown`. | SVAD markdown/text or JSON wrapper. | `0` success, `4` parse error, `1` other failure. | None. | `sva-toolkit/src/sva_toolkit/cli/main.py:429`, `sva-toolkit/tests/integration/test_cli_describe.py:11`, [sva-describe.md](sva-describe.md) |
+| F-12 | `sva describe cot` | Inline SVA text or a file path; `--format text|json|markdown`. | CoT markdown/text or JSON wrapper. | `0` success, `4` parse error, `1` other failure. | None. | `sva-toolkit/src/sva_toolkit/cli/main.py:445`, `sva-toolkit/tests/integration/test_cli_describe.py:19`, [sva-describe.md](sva-describe.md) |
+| F-13 | `sva data build` | JSON array with `SVA`/`sva` fields plus optional passthrough metadata; optional `-o`, `--model`, `--workers`. | JSONL rows with `SVA` and optional `SVAD`, `CoT`, and `metadata`. | `0` success, `5` fatal LLM timeout after retry exhaustion, `1` other runtime failure. | `openai` / `sva-toolkit[llm]` only when `--model` is used; offline CoT-only builds work without it. | `sva-toolkit/src/sva_toolkit/cli/main.py:461`, `sva-toolkit/tests/cli/test_exit_codes.py:46`, `sva-toolkit/tests/integration/test_cli_data.py:12`, [sva-data.md](sva-data.md) |
+| F-14 | `sva data benchmark` | JSON dataset with `SVAD` + `SVA`, `--model` or `SVA_TOOLKIT_MODEL`, optional `-o`, `--workers`. | JSON summary with counts/rates/timing metrics. | `0` success, `2` missing model configuration, `1` setup/runtime failure. Individual benchmark item errors are recorded in the result payload rather than forcing a CLI failure. | `openai` / `sva-toolkit[llm]` for generation; a formal backend is needed for meaningful semantic comparison. | `sva-toolkit/src/sva_toolkit/cli/main.py:483`, `sva-toolkit/tests/cli/test_main.py:156`, [sva-data.md](sva-data.md) |
+| F-15 | Global CLI contract | Every command inherits `--verbose` traceback mode, typed exit-code mapping, and end-of-run diagnostics summaries when non-zero diagnostics were recorded. | Full traceback on stderr in verbose mode; otherwise compact Click-style errors. | `0` success, `1` generic error, `2` usage error, `3` tool missing, `4` parse error, `5` timeout, `6` lossy extraction, `7` backend unavailable. | None. | `sva-toolkit/src/sva_toolkit/cli/main.py:22`, `sva-toolkit/src/sva_toolkit/cli/exit_codes.py:14`, `sva-toolkit/tests/cli/test_exit_codes.py:1` |
 
-1. **CLI command surface.** Per-command: inputs, outputs, exit codes,
-   optional dependencies, worked examples (prefer the existing
-   `docs/sva-*.md` examples and link to them).
-2. **SVA syntax coverage.** Table of every construct that parses and
-   round-trips after T06/T07; link to `docs/gaps.md` §2 for the
-   pre-remediation baseline.
-3. **Describe engine coverage.** Table of every system function and
-   operator with a dedicated NL template after T09.
-4. **Formal workflow.** `check`, `equivalent`, `relationship` with
-   clock/reset flags, backend selection, and exit-code mapping (T08,
-   T13).
-5. **Timing DSL.** Constructs supported by the grammar parser (T10)
-   and the bridging API surface (T11).
-6. **Generation.** Deterministic generation via `--seed` (T04),
-   coverage computation, Verible validation when available.
-7. **Dataset and benchmark.** Atomic-locked cache (T12), LLM retry
-   policy knobs (T12), offline-safe defaults.
-8. **Runtime guarantees.** Atomic writes (T02), process-group cleanup
-   on POSIX timeouts (T03), diagnostic summary at CLI exit (T02+T13).
-9. **Compatibility matrix.** Tested Python versions, tested operating
-   systems, tested external tool versions.
-10. **Extras.** `timing-render`, `llm`, `formal`, `all` — what each
-    one unlocks.
+## Python API Surface
 
-Seed feature rows the worker should expand (not exhaustive):
+| ID | Entry points | Semantics | Optional extra | Refs |
+| --- | --- | --- | --- | --- |
+| F-16 | `sva_toolkit.sva.parse_expr`, `parse_sequence`, `parse_property_body`, `parse_property_text`, `emit_expr`, `emit_sequence`, `emit_property_body`, `emit_property_text` | Parse and emit SVA expressions, sequences, and property surfaces; AST dataclasses are re-exported from `sva_toolkit.sva`. | None. | `sva-toolkit/src/sva_toolkit/sva/__init__.py:1`, `sva-toolkit/src/sva_toolkit/sva/parser.py:121` |
+| F-17 | `sva_toolkit.formal.parse_property`, `normalize_property`, `FormalService` | Normalize property text to a `FormalProperty`, require explicit clock/reset semantics, and run implication/equivalence/relationship checks through the configured backend. | External formal tools at runtime. | `sva-toolkit/src/sva_toolkit/formal/__init__.py:1`, `sva-toolkit/src/sva_toolkit/formal/service.py:13` |
+| F-18 | `sva_toolkit.timing.render_diagram_svg`, `render_diagram_png`, `timing.frontend.parser.parse_diagram`, `timing.bridge.emit_sva.emit_parameterized_sva`, `timing.bridge.from_sva.extract_sva_scenario`, `extract_sva_scenarios`, `bundle_sva_scenarios`, `timing.bridge.to_dsl.emit_timing_dsl` | Parse timing DSL, render diagrams, emit parameterized SVA from diagrams, and recover timing DSL from SVA with an `ExtractionReport`. | `timing-render` for PNG only. | `sva-toolkit/src/sva_toolkit/timing/__init__.py:1`, `sva-toolkit/src/sva_toolkit/timing/frontend/parser.py:1`, `sva-toolkit/src/sva_toolkit/timing/bridge/from_sva.py:455`, `sva-toolkit/src/sva_toolkit/timing/bridge/to_dsl.py:17` |
+| F-19 | `sva_toolkit.generate.SVASynthesizer`, `StratifiedGenerator`, `GenerationRng`, `compute_coverage_statistics`, template helpers such as `generate_sv_module` | Generate random or stratified assertion sets, reuse an explicit RNG seed, and compute construct-coverage statistics over generated property text. | External Verible only when validation is requested. | `sva-toolkit/src/sva_toolkit/generate/__init__.py:1`, `sva-toolkit/src/sva_toolkit/generate/rng.py:21`, `sva-toolkit/src/sva_toolkit/generate/synthesizer.py:70` |
+| F-20 | `sva_toolkit.describe.SVADTranslator`, `SVACoTBuilder`, `CoTSection` | Render compact SVAD descriptions and stepwise CoT explanations from the shared parser structure. | None. | `sva-toolkit/src/sva_toolkit/describe/__init__.py:1`, `sva-toolkit/src/sva_toolkit/describe/translator.py:118`, `sva-toolkit/src/sva_toolkit/describe/cot.py:32` |
+| F-21 | `sva_toolkit.data.DatasetBuilder`, `DatasetEntry`, `BenchmarkRunner`, `BenchmarkResult`, `RelationshipType`, `SingleResult` | Build datasets from SVA rows, optionally call an LLM for SVAD, reuse cached results, and benchmark generated SVA against references through the formal service. | `llm` for LLM-backed paths; formal backend for meaningful semantic benchmark comparison. | `sva-toolkit/src/sva_toolkit/data/__init__.py:1`, `sva-toolkit/src/sva_toolkit/data/dataset.py:202`, `sva-toolkit/src/sva_toolkit/data/benchmark.py:229` |
+| F-22 | `sva_toolkit.runtime.atomic_write_*`, `Diagnostics`, `configure_cli_logging`, `ToolRegistry`, `run_tool`, `make_work_dir`, `LLMConfig`, `LLMClient` | Shared runtime helpers for atomic writes, diagnostics collection, lazy tool discovery, subprocess execution, and LLM configuration. | `llm` only when `LLMClient` actually imports OpenAI. | `sva-toolkit/src/sva_toolkit/runtime/__init__.py:1`, `sva-toolkit/tests/runtime/test_runtime_imports.py:1` |
 
-| ID   | Feature                                                             | Task |
-| ---- | ------------------------------------------------------------------- | ---- |
-| F-01 | Lexer tolerates `//` and `/* */` comments, strings, attributes      | T01  |
-| F-02 | Lexer records backtick directives via preprocessor pass              | T01  |
-| F-03 | Full SVA keyword coverage (temporal + structural)                   | T06  |
-| F-04 | Parser round-trip for every documented construct                     | T07  |
-| F-05 | Opaque downgrade surfaces WARNING + counter                          | T07  |
-| F-06 | `sva generate --seed` deterministic output                           | T04  |
-| F-07 | `sva formal --clock --clock-edge --reset` mandatory flags           | T08  |
-| F-08 | EBMC / VCF template sanitization against reserved words              | T05  |
-| F-09 | Subprocess orphan reaping on POSIX                                   | T03  |
-| F-10 | Atomic file writes for CLI, cache, formal backends                   | T02  |
-| F-11 | LLM retry with backoff and `Retry-After` support                     | T12  |
-| F-12 | Multiprocess-safe dataset cache with schema version                  | T12  |
-| F-13 | Timing DSL grammar parser with precise error messages                | T10  |
-| F-14 | `ExtractionReport` surfaces LOSSY / UNSUPPORTED to the CLI           | T11  |
-| F-15 | Describe templates for every lexed `$ident` plus uncertainty marker  | T09  |
-| F-16 | Stable CLI exit codes (0/1/2/3/4/5/6/7)                              | T13  |
-| F-17 | End-of-run `Diagnostics` summary on CLI                              | T02+T13 |
+## SVA Syntax Coverage
 
-The final document authored in T15 must expand every row above into a
-full section with the eight required fields, include worked examples,
-and provide a one-screen "quick capability matrix" at the top. Relates
-to DAG task T15.
+| ID | Construct set | Parse | Round-trip | Describe | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| F-23 | Trivia-tolerant tokenization: `//`, `/* */`, string literals, attributes, escaped identifiers, supported backtick directives recorded as trivia. | Yes | Yes | Yes for property surfaces after preprocessing/tokenization. | `sva-toolkit/src/sva_toolkit/sva/lexer.py:237`, `sva-toolkit/src/sva_toolkit/sva/preprocessor.py:47`, `sva-toolkit/tests/sva/test_lexer_trivia.py:1`, `sva-toolkit/tests/sva/test_lexer_preprocessor.py:1` |
+| F-24 | Property and sequence operators: `|->`, `|=>`, `iff`, `implies`, `and`, `or`, `until`, `until_with`, `s_until`, `s_until_with`, `nexttime`, `s_nexttime`, `always`, `s_always`, `eventually`, `s_eventually`, `strong`, `weak`, multi-event clocking, `within`, `intersect`, `throughout`, `matched`, `ended`, `first_match`, delay ranges including `$`, and repetition `[+]`, `[*]`, `[=]`, `[->]`. | Yes | Yes | Yes on property/sequence surfaces. | `sva-toolkit/src/sva_toolkit/sva/lexer.py:12`, `sva-toolkit/src/sva_toolkit/sva/parser.py:331`, `sva-toolkit/tests/sva/test_parser_temporal.py:1`, `sva-toolkit/tests/sva/test_parser_structural.py:1` |
+| F-25 | Expression operators: arithmetic, boolean, comparison, bitwise, ternary, `inside`, `dist`, logical `->`, logical `<->`, literals, identifiers, `$ident(...)` calls, and `.ended` sequence accessors. | Yes | Yes | Yes for the property-centric describe flows. | `sva-toolkit/src/sva_toolkit/sva/parser.py:709`, `sva-toolkit/tests/sva/test_parser_temporal.py:81`, `sva-toolkit/src/sva_toolkit/describe/translator.py:250` |
+| F-26 | Structural declaration surfaces: named `property`, `sequence`, `checker`, `let`, `bind`, `clocking`, `default clocking`, property formals with direction/default, and typed local vars. | Yes | Yes | No standalone declaration rendering in `sva describe`; describe remains property-centric. | `sva-toolkit/src/sva_toolkit/sva/parser.py:201`, `sva-toolkit/src/sva_toolkit/sva/ast.py:381`, `sva-toolkit/tests/sva/test_parser_structural.py:1` |
+| F-27 | Opaque fallback surfacing: `recover=True` still exists, but it increments counters, logs warnings, and propagates `[unverified]` markers into SVAD/CoT output. | Yes | Opaque fragments round-trip as preserved raw text. | Yes, explicitly marked low confidence. | `sva-toolkit/src/sva_toolkit/sva/diagnostics.py:19`, `sva-toolkit/tests/sva/test_opaque_diagnostics.py:1`, `sva-toolkit/tests/describe/test_uncertainty.py:1` |
+
+## Describe Coverage
+
+| ID | Coverage | Supported today | Evidence |
+| --- | --- | --- | --- |
+| F-28 | System-function templates | Dedicated natural-language templates exist for `$rose`, `$fell`, `$stable`, `$changed`, `$onehot`, `$onehot0`, `$isunknown`, `$countones`, `$countbits`, `$past`, `$sampled`, `$rewind`, `$past_gclk`, `$future_gclk`, `$assertcontrol`, `$asserton`, `$assertoff`, `$assertpassoff`, `$assertfailoff`, `$assertpassoncontrol`, `$assertfailoncontrol`, `$assertnonvacuouson`, `$assertvacuousoff`, `$error`, `$fatal`, `$warning`, and `$info`. | `sva-toolkit/src/sva_toolkit/describe/translator.py:200`, `sva-toolkit/tests/describe/test_translator.py:42`, `sva-toolkit/tests/describe/test_uncertainty.py:79` |
+| F-29 | Output shapes | `SVADTranslator.translate()` produces compact sectioned markdown/text; `SVACoTBuilder.build()` produces a sectioned CoT with interface, semantics, sequence, and final-assembly steps. | `sva-toolkit/src/sva_toolkit/describe/translator.py:118`, `sva-toolkit/src/sva_toolkit/describe/cot.py:98`, `sva-toolkit/tests/integration/test_cli_describe.py:11` |
+
+## Timing DSL Coverage
+
+| ID | Timing DSL support | Supported today | Evidence |
+| --- | --- | --- | --- |
+| F-30 | Grammar parser | `diagram`, `clock`, `disable iff`, `ticks`, `params` / `param`, `lane bit|bus[width]`, `anchor` / `event`, `window`, `cut`, `show`, `property`, and legacy `rule` are tokenized by a grammar parser with line/column syntax diagnostics. | `sva-toolkit/src/sva_toolkit/timing/frontend/grammar.py:206`, `sva-toolkit/tests/timing/test_parser.py:1`, `sva-toolkit/tests/timing/test_extraction_status.py:1` |
+| F-31 | Render and bridge flows | SVG render works in the base install; PNG render works with `timing-render`; diagrams can emit parameterized SVA and SVA sources can extract or bundle timing DSL with exact/lossy/unsupported status reporting. | `sva-toolkit/src/sva_toolkit/timing/render/svg.py:15`, `sva-toolkit/src/sva_toolkit/timing/render/png.py:6`, `sva-toolkit/src/sva_toolkit/timing/bridge/status.py:33`, `sva-toolkit/tests/integration/test_cli_timing.py:11`, `sva-toolkit/tests/timing/test_sva_roundtrip.py:1` |
+
+## Determinism, Cache, Retry, and Runtime Guarantees
+
+| ID | Guarantee | Supported today | Evidence |
+| --- | --- | --- | --- |
+| F-32 | Deterministic generation | For a fixed toolkit version, fixed options, and explicit `--seed` / `GenerationRng(seed=...)`, generator output is byte-stable; when no seed is supplied, the CLI prints the chosen seed to stderr so the run can be reproduced later. | `sva-toolkit/src/sva_toolkit/generate/rng.py:14`, `sva-toolkit/src/sva_toolkit/cli/main.py:393`, `sva-toolkit/tests/generate/test_determinism.py:17` |
+| F-33 | Atomic writes and diagnostics | CLI text/JSON/JSONL outputs, formal backend scratch files, and cache writes use atomic write helpers; diagnostics counters render a deterministic end-of-run summary only when non-zero. | `sva-toolkit/src/sva_toolkit/runtime/atomic_io.py:15`, `sva-toolkit/src/sva_toolkit/runtime/diagnostics.py:55`, `sva-toolkit/tests/runtime/test_atomic_io.py:1`, `sva-toolkit/tests/runtime/test_diagnostics.py:29` |
+| F-34 | Timeout cleanup | On POSIX, timed-out tool invocations start a new session and terminate the whole process group; work directories are created with private permissions. | `sva-toolkit/src/sva_toolkit/runtime/process.py:34`, `sva-toolkit/tests/runtime/test_process.py:1`, `sva-toolkit/tests/runtime/test_process_orphans.py:1` |
+| F-35 | Dataset / benchmark cache | Cache files are schema-tagged, atomically written, and guarded by advisory locks; stale cache entries from another schema version are ignored. | `sva-toolkit/src/sva_toolkit/data/cache.py:13`, `sva-toolkit/tests/data/test_cache_locking.py:1` |
+| F-36 | LLM retry behavior | `LLMClient.generate()` retries HTTP `429` and `5xx`-style failures, honors `Retry-After`, uses exponential backoff with optional jitter, records retry exhaustion in diagnostics, and lets dataset build surface fatal timeouts. | `sva-toolkit/src/sva_toolkit/runtime/llm.py:34`, `sva-toolkit/src/sva_toolkit/runtime/retry.py:15`, `sva-toolkit/tests/data/test_llm_retry.py:1`, `sva-toolkit/tests/cli/test_exit_codes.py:46` |
+
+## Compatibility and Extras
+
+| ID | Topic | Supported today | Evidence |
+| --- | --- | --- | --- |
+| F-37 | Python and OS matrix | `pyproject.toml` requires Python `>=3.11`; CI runs unit and integration jobs on Python `3.11` and `3.12` on `ubuntu-latest`. The repository contains POSIX-specific timeout/orphan tests; there is no macOS or Windows CI matrix in-tree. | `sva-toolkit/pyproject.toml:7`, `sva-toolkit/.github/workflows/ci.yml:1`, `sva-toolkit/tests/runtime/test_process_orphans.py:1` |
+| F-38 | Optional extras and runtime tools | `llm` installs `openai`; `timing-render` installs `cairosvg` and `wavedrom`; `formal` is an empty packaging extra because formal support depends on external binaries (`ebmc`, `vcf`) discovered at runtime; `all` aggregates the Python extras. | `sva-toolkit/pyproject.toml:16`, `sva-toolkit/src/sva_toolkit/runtime/tools.py:1` |
+
+## Notes
+
+- `describe --format markdown` and `describe --format text` currently emit the
+  same text-first content; the selector exists to keep the CLI/API surface
+  stable while the formatting layer evolves.
+- `data benchmark` can exit `0` even when some benchmark items failed, because
+  per-item generation/verification errors are reported inside the JSON result
+  as `error_count` / `error_message` rather than by aborting the whole run.
+- Validation depth in this repository is substantial but not complete; see
+  [LIMITATIONS.md](LIMITATIONS.md) `L-16` for the current T14 gap.

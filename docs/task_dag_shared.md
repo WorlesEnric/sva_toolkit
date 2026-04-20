@@ -136,7 +136,7 @@ flowchart TD
 | T12     | Codex-T12      | DONE        | 100        | 2026-04-20  | —        | Landed schema-tagged locked cache writes, LLM retry/backoff, translator-fallback diagnostics, and task-owned data tests |
 | T13     | Codex-T13      | DONE        | 100        | 2026-04-20  | —        | Landed typed CLI exit codes, global verbose traceback mode, diagnostics summaries, and composed T04/T08/T11 CLI helpers |
 | T14     | —              | NOT_STARTED | 0          | 2026-04-19  | T01–T13  | Wait for integration landing, then build adversarial + regression suite     |
-| T15     | —              | NOT_STARTED | 0          | 2026-04-19  | T01–T14  | Wait for all fixes, then author `LIMITATIONS.md` and `SUPPORTED_FEATURES.md`|
+| T15     | Codex-T15      | BLOCKED     | 90         | 2026-04-20  | T14 not landed; integration/regression suite still scaffolded | Reconcile `LIMITATIONS.md` / `SUPPORTED_FEATURES.md` against the final T14 regression landing, then flip to `DONE` if no capability or limitation inventory changes |
 
 ---
 
@@ -412,3 +412,4 @@ Append new entries at the bottom. Never rewrite history.
 - 2026-04-20 20:32 — T12 — Codex-T12 — IN_PROGRESS -> DONE — Replaced cache writes with atomic+locked schema-tagged JSON, added configurable LLM retry/backoff with `Retry-After`, surfaced translator fallback through diagnostics/logging, and passed `pytest -q tests/data/test_dataset.py tests/data/test_benchmark.py tests/data/test_cache_locking.py tests/data/test_llm_retry.py` plus `ruff check` on touched files.
 - 2026-04-20 22:05 — T13 — Codex-T13 — scope note — Touched `sva-toolkit/src/sva_toolkit/runtime/diagnostics.py` to make CLI logging reuse the current stderr safely across repeated Click invocations, and `sva-toolkit/src/sva_toolkit/data/dataset.py` so LLM timeout failures surface as fatal exit-code-5 conditions instead of being swallowed by translator fallback.
 - 2026-04-20 22:05 — T13 — Codex-T13 — NOT_STARTED -> DONE — Replaced catch-all CLI error handling with stable typed exit codes, mounted the T04/T08/T11 CLI helper modules, added global `--verbose` traceback output plus end-of-run diagnostics summaries, and passed `pytest -q tests/data/test_llm_retry.py tests/runtime/test_diagnostics.py tests/cli/test_exit_codes.py tests/cli/test_main.py tests/formal/test_clock_reset_flags.py` with clean `ruff check`.
+- 2026-04-20 23:02 — T15 — Codex-T15 — NOT_STARTED -> BLOCKED — Authored `docs/LIMITATIONS.md` and `docs/SUPPORTED_FEATURES.md`, added the pointer section in `docs/gaps.md`, and verified unique `L-xx` / `F-xx` IDs; leaving the task blocked because T14 is still `NOT_STARTED` and the docs need a final post-T14 reconciliation pass before they can be claimed as canonical.

@@ -1,44 +1,26 @@
-# SVA Toolkit V3 — Limitations (scaffold)
+# SVA Toolkit V3 — Limitations
 
-SCAFFOLD SUMMARY — replace this document with the real user-facing
-limitations inventory in task T15.
+This is the canonical user-facing inventory of what `sva-toolkit` cannot do
+today on the current `v3.0.0a1` code line. Use it together with
+[SUPPORTED_FEATURES.md](SUPPORTED_FEATURES.md) when deciding whether the
+toolkit fits a workflow. The deeper audit evidence remains in
+[gaps.md](gaps.md).
 
-This file is the canonical, stable list of everything that the toolkit
-deliberately does **not** support after the gap-remediation pass
-described in `docs/task_dag_planning.md`. It is the document users
-should consult before deciding whether `sva-toolkit` fits their
-workflow, and it is the document that downstream consumers should cite
-when filing feature requests.
-
-Each row must have:
-
-- A unique ID (`L-01`, `L-02`, …) that never changes once published.
-- A category (`syntax`, `robustness`, `integration`, `infrastructure`,
-  `platform`).
-- A one-sentence description.
-- The root cause (why the toolkit does not support it — out of scope,
-  requires vendor integration, requires architectural rewrite, etc.).
-- The user-visible symptom (what happens if they try it anyway).
-- A workaround if one exists.
-- A link to the canonical discussion in `docs/gaps.md` or to the
-  relevant source file.
-
-Seed entries the worker should expand (not exhaustive):
-
-| ID   | Category       | One-line limitation                                                                               |
-| ---- | -------------- | ------------------------------------------------------------------------------------------------- |
-| L-01 | syntax         | No full RTL module parsing; `sva parse` remains property-centric per `docs/sva-parse.md`.         |
-| L-02 | syntax         | No UVM / OVL macro expansion (risk R12).                                                          |
-| L-03 | syntax         | Encrypted-IP (`` `protect`` / `` `endprotect``) regions are detected but not decrypted (R14).    |
-| L-04 | syntax         | Vendor extensions (VCS `$smashed_*`, Jasper `cover` options, Questa/Xcelium checker extras) (R11).|
-| L-05 | integration    | Structured counterexample reconstruction from EBMC raw output is deferred (R13).                  |
-| L-06 | integration    | Coverage integrity: `sva generate --coverage` measures generated-property coverage, not design coverage (R15). |
-| L-07 | infrastructure | No performance ceiling; very large inputs (≥10 MB) are not streamed (R16).                        |
-| L-08 | infrastructure | Audit trail on `CheckResult` carries backend version + timestamp, but not a hash of inputs (R18 partial). |
-| L-09 | platform       | Process-group orphan-kill is POSIX-only; Windows uses best-effort `terminate()` → `kill()` (T03).|
-| L-10 | integration    | Custom `base_url` and non-OpenAI LLM endpoints are supported in Python API but not yet on CLI.    |
-
-The final document authored in T15 must contain one row per
-unfixed gap with the six fields above, and must cross-link to the
-specific source location (`src/sva_toolkit/...`:line) that anchors the
-limitation. Relates to DAG task T15.
+| ID | Category | Limitation | Root cause | User-visible symptom | Workaround | References |
+| --- | --- | --- | --- | --- | --- | --- |
+| L-01 | syntax | The toolkit parses assertion/property surfaces, not full SystemVerilog compilation units or UVM testbench source. | `sva_toolkit.sva` is intentionally property-centric, and `sva parse` calls `parse_property_text()` on one loaded input. | Whole modules, testbenches, or mixed-source files do not produce a full-module AST and may fail or only partially process. | Extract `property` / `assert property` / `assume property` / `cover property` surfaces first; use `split_property_texts()` for batching. | `docs/sva-parse.md`, `sva-toolkit/src/sva_toolkit/cli/main.py:237`, `sva-toolkit/src/sva_toolkit/formal/parse.py:57`, `docs/gaps.md` §4.1 |
+| L-02 | syntax | Macro expansion is not implemented; UVM, OVL, and project-local macro invocations remain unsupported. | The preprocessor records and blanks a fixed directive set, but it does not evaluate `define`s or expand macro calls. | `` `uvm_*``, `` `OVL_*``, and custom macro-generated assertions still fail to tokenize/parse. | Run an external SystemVerilog preprocessor and feed the expanded assertion text into the toolkit. | `sva-toolkit/src/sva_toolkit/sva/preprocessor.py:20`, `docs/gaps.md` §5 R10, `docs/gaps.md` §5 R12 |
+| L-03 | syntax | Encrypted IP regions using `` `protect`` / `` `endprotect`` are detected but not decrypted. | The lexer explicitly rejects protected regions instead of attempting vendor-specific decryption. | Tokenization stops with `encrypted preprocessor regions are not supported`. | Decrypt or strip protected regions outside the toolkit before parsing. | `sva-toolkit/src/sva_toolkit/sva/preprocessor.py:85`, `sva-toolkit/src/sva_toolkit/sva/lexer.py:243`, `docs/gaps.md` §5 R14 |
+| L-04 | syntax | Vendor-specific assertion extensions are out of scope. | The lexer/parser target a portable SVA surface, not vendor dialects such as VCS `$smashed_*` or Jasper-specific `cover` options. | Extension tokens may parse as opaque/generic calls or fail in formal/timing/describe flows. | Normalize the source to standard SVA before using the toolkit. | `sva-toolkit/src/sva_toolkit/sva/lexer.py:128`, `docs/gaps.md` §5 R11 |
+| L-05 | integration | `sva formal` only accepts one effective clock and a simple reset shape for backend generation. | The formal backends synthesize one checker module around one clock/reset pair, and the sanitizer only permits single-event clocking plus simple reset expressions. | Multi-event clocking, hierarchical clock/reset identifiers, or complex reset expressions are rejected even if `sva parse` accepts them. | Reduce the property to one `@(posedge|negedge clk)` plus a simple `disable iff (...)`, or pass `--clock`, `--clock-edge`, and `--reset`. | `sva-toolkit/src/sva_toolkit/formal/parse.py:280`, `sva-toolkit/src/sva_toolkit/formal/sanitize.py:105`, `docs/gaps.md` §2.4, `docs/gaps.md` §4.2 |
+| L-06 | robustness | The parser/emitter does not perform full SystemVerilog semantic scope or binding analysis. | The toolkit builds ASTs and round-trips syntax, but it does not implement a full elaboration/symbol-table pass for locals, checkers, or user-defined property binding. | Some syntactically valid declarations can round-trip without the toolkit catching shadowing or binding mistakes that a simulator/formal tool would reject. | Treat parse/emit as syntax tooling and revalidate final code with Verible, a simulator, or a formal tool. | `sva-toolkit/src/sva_toolkit/sva/parser.py:887`, `sva-toolkit/src/sva_toolkit/sva/ast.py:418`, `docs/gaps.md` §2.5, `docs/gaps.md` §2.8 |
+| L-07 | integration | `sva parse --format json` is a convenience dump, not a versioned public schema. | The CLI serializes dataclasses directly instead of publishing a stable JSON contract. | Downstream JSON consumers must track AST layout changes across toolkit versions. | Pin the toolkit version or consume Python API objects directly. | `sva-toolkit/src/sva_toolkit/cli/main.py:105`, `docs/gaps.md` §4.1 |
+| L-08 | integration | Formal counterexamples remain backend text excerpts, not structured traces. | EBMC and VC Formal still extract counterexamples with text/regex heuristics. | `CheckResult.counterexample` is a plain text snippet rather than a normalized waveform or signal-by-time table. | Keep backend artifacts and inspect backend-native traces or VCDs. | `sva-toolkit/src/sva_toolkit/formal/backends/ebmc.py:224`, `sva-toolkit/src/sva_toolkit/formal/backends/vcformal.py:292`, `docs/gaps.md` §5 R13 |
+| L-09 | integration | `sva generate --coverage` reports generator corpus coverage, not DUT coverage or formal coverage. | The coverage engine counts construct occurrences in generated property text. | Reported percentages do not say anything about real design coverage, cover hits, or vacuity. | Treat the output as generator metadata only; use simulator/formal tooling for design coverage. | `sva-toolkit/src/sva_toolkit/generate/coverage.py:15`, `docs/gaps.md` §5 R15 |
+| L-10 | integration | Generated assertions are syntax-level artifacts and are not proven meaningful against a target design. | The generator has no DUT context and its validation path is syntax-only. | `sva generate` can produce legal assertions that are vacuous, unsatisfiable, or irrelevant for a specific RTL design. | Review generated properties and run them in a real simulation or formal environment. | `sva-toolkit/src/sva_toolkit/generate/synthesizer.py:557`, `docs/gaps.md` §4.4 |
+| L-11 | infrastructure | Large inputs are not streamed or performance-budgeted. | CLI loaders, the SVA lexer, and the timing parser read whole inputs into memory and operate on full in-memory strings/collections. | Very large files or corpora can have high latency or memory use, and the repo only carries partial smoke coverage rather than a hard performance envelope. | Split large corpora into smaller chunks and batch them externally. | `sva-toolkit/src/sva_toolkit/cli/main.py:39`, `sva-toolkit/src/sva_toolkit/sva/lexer.py:237`, `sva-toolkit/src/sva_toolkit/timing/frontend/grammar.py:79`, `docs/gaps.md` §5 R16, `sva-toolkit/tests/integration/test_large_inputs.py:1` |
+| L-12 | infrastructure | Formal verdicts do not carry a built-in audit record. | `CheckResult` stores only `result`, `message`, `counterexample`, `log`, and `module`. | There is no first-class input hash, backend version, or timestamp attached to a proof result. | Wrap the CLI/API in an external harness that records normalized inputs, tool versions, and artifacts. | `sva-toolkit/src/sva_toolkit/formal/model.py:27`, `docs/gaps.md` §5 R18 |
+| L-13 | infrastructure | Windows timeout cleanup is best-effort only. | The Windows process path can only `terminate()` and `kill()` the direct child instead of reaping a POSIX-style process group. | Helper processes may survive after timeout on Windows even though POSIX cleanup is stronger. | Prefer POSIX for CI/formal tool execution or add external process supervision on Windows. | `sva-toolkit/src/sva_toolkit/runtime/process.py:1`, `docs/gaps.md` §3.7 |
+| L-14 | integration | CLI LLM configuration is intentionally narrow. | `sva data ...` exposes model selection only, while `base_url` and retry tuning live on `LLMConfig` in the Python API. | Alternate endpoints and retry policy cannot be selected from CLI flags alone. | Use `DatasetBuilder.from_llm_config()` or `BenchmarkRunner.from_configs()` with `LLMConfig`. | `sva-toolkit/src/sva_toolkit/cli/main.py:461`, `sva-toolkit/src/sva_toolkit/runtime/llm.py:14`, `docs/gaps.md` §4.6 |
+| L-15 | integration | Optional tool failures are not uniformly mapped to exit code `3` yet. | Typed tool-missing handling is wired through formal paths, but `generate --validate` and PNG render still surface generic failures. | Missing Verible or CairoSVG can still return exit `1` instead of the reserved tool-missing code. | Preflight those dependencies in automation or treat those commands as generic failures for now. | `sva-toolkit/src/sva_toolkit/generate/synthesizer.py:563`, `sva-toolkit/src/sva_toolkit/timing/render/png.py:6`, `sva-toolkit/src/sva_toolkit/cli/exit_codes.py:31`, `sva-toolkit/tests/integration/test_tool_missing.py:1` |
+| L-16 | infrastructure | The planned T14 regression signoff is not fully landed in this tree. | `docs/task_dag_shared.md` still marks `T14` as not started, and several integration files remain scaffold placeholders. | These docs describe the current code and current tests, but not the complete DAG-end regression sweep originally planned for T14. | Treat this as current-commit ground truth and refresh after T14 lands. | `docs/task_dag_shared.md:128`, `sva-toolkit/tests/integration/test_cache_race.py:1`, `sva-toolkit/tests/integration/test_opaque_surfacing.py:1`, `sva-toolkit/tests/integration/test_orphans.py:1`, `sva-toolkit/tests/integration/test_tool_missing.py:1`, `sva-toolkit/tests/integration/test_large_inputs.py:1` |
