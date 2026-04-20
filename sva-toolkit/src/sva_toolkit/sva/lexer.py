@@ -5,11 +5,14 @@ from enum import Enum
 
 from sva_toolkit.sva.ast import SourceSpan
 from sva_toolkit.sva.errors import SvaSyntaxError
+from sva_toolkit.sva.preprocessor import preprocess
+from sva_toolkit.sva.trivia import Trivia, collect_trivia, consume_string_literal
 
 
 class TokenKind(str, Enum):
     IDENT = "IDENT"
     LITERAL = "LITERAL"
+    STRING = "STRING"
     DOLLAR_IDENT = "DOLLAR_IDENT"
     PROPERTY = "property"
     ENDPROPERTY = "endproperty"
@@ -154,64 +157,96 @@ _SINGLE_CHAR_TOKENS = {
 
 
 def tokenize(text: str) -> list[Token]:
+    tokens, _ = tokenize_with_trivia(text)
+    return tokens
+
+
+def tokenize_with_trivia(text: str) -> tuple[list[Token], list[Trivia]]:
+    preprocessed = preprocess(text)
+    for directive in preprocessed.directives:
+        if directive.name == "protect":
+            raise SvaSyntaxError(directive.span.start, "encrypted preprocessor regions are not supported", text)
+
     tokens: list[Token] = []
+    trivia: list[Trivia] = []
+    skipped = iter(preprocessed.trivia)
+    pending = next(skipped, None)
     index = 0
     length = len(text)
 
     while index < length:
-        char = text[index]
-        if char.isspace():
-            index += 1
+        if pending is not None and pending.span.start == index:
+            trivia.append(pending)
+            index = pending.span.end
+            pending = next(skipped, None)
             continue
 
-        start = index
-
-        if char.isdigit():
-            index = _consume_numeric_literal(text, index)
-            tokens.append(Token(TokenKind.LITERAL, text[start:index], SourceSpan(start, index)))
+        if piece := collect_trivia(text, index):
+            trivia.append(piece)
+            index = piece.span.end
             continue
 
-        if char == "$":
-            if index + 1 < length and (text[index + 1].isalpha() or text[index + 1] == "_"):
-                index += 2
-                while index < length and (text[index].isalnum() or text[index] in {"_", "$"}):
-                    index += 1
-                tokens.append(Token(TokenKind.DOLLAR_IDENT, text[start:index], SourceSpan(start, index)))
-                continue
-            index += 1
-            tokens.append(Token(TokenKind.LITERAL, text[start:index], SourceSpan(start, index)))
-            continue
-
-        if char.isalpha() or char == "_":
-            index += 1
-            while index < length and (text[index].isalnum() or text[index] in {"_", "$"}):
-                index += 1
-            token_text = text[start:index]
-            kind = _KEYWORDS.get(token_text.lower(), TokenKind.IDENT)
-            tokens.append(Token(kind, token_text, SourceSpan(start, index)))
-            continue
-
-        matched = False
-        for operator, kind in _MULTI_CHAR_TOKENS:
-            if text.startswith(operator, index):
-                end = index + len(operator)
-                tokens.append(Token(kind, operator, SourceSpan(index, end)))
-                index = end
-                matched = True
-                break
-        if matched:
-            continue
-
-        if char in _SINGLE_CHAR_TOKENS:
-            index += 1
-            tokens.append(Token(_SINGLE_CHAR_TOKENS[char], char, SourceSpan(start, index)))
-            continue
-
-        raise SvaSyntaxError(start, f"unexpected character {char!r}", text)
+        token, index = _consume_token(text, index)
+        tokens.append(token)
 
     eof_span = SourceSpan(length, length)
     tokens.append(Token(TokenKind.EOF, "", eof_span))
-    return tokens
+    return tokens, trivia
+
+
+def _consume_token(text: str, index: int) -> tuple[Token, int]:
+    char = text[index]
+    start = index
+
+    if char.isdigit():
+        end = _consume_numeric_literal(text, index)
+        return Token(TokenKind.LITERAL, text[start:end], SourceSpan(start, end)), end
+
+    if char == '"':
+        end = consume_string_literal(text, index)
+        return Token(TokenKind.STRING, text[start:end], SourceSpan(start, end)), end
+
+    if char == "$":
+        if index + 1 < len(text) and (text[index + 1].isalpha() or text[index + 1] == "_"):
+            index += 2
+            while index < len(text) and (text[index].isalnum() or text[index] in {"_", "$"}):
+                index += 1
+            return Token(TokenKind.DOLLAR_IDENT, text[start:index], SourceSpan(start, index)), index
+        index += 1
+        return Token(TokenKind.LITERAL, text[start:index], SourceSpan(start, index)), index
+
+    if char == "\\":
+        end = _consume_escaped_identifier(text, index)
+        return Token(TokenKind.IDENT, text[start:end], SourceSpan(start, end)), end
+
+    if char.isalpha() or char == "_":
+        index += 1
+        while index < len(text) and (text[index].isalnum() or text[index] in {"_", "$"}):
+            index += 1
+        token_text = text[start:index]
+        kind = _KEYWORDS.get(token_text.lower(), TokenKind.IDENT)
+        return Token(kind, token_text, SourceSpan(start, index)), index
+
+    for operator, kind in _MULTI_CHAR_TOKENS:
+        if text.startswith(operator, index):
+            end = index + len(operator)
+            return Token(kind, operator, SourceSpan(start, end)), end
+
+    if char in _SINGLE_CHAR_TOKENS:
+        index += 1
+        return Token(_SINGLE_CHAR_TOKENS[char], char, SourceSpan(start, index)), index
+
+    raise SvaSyntaxError(start, f"unexpected character {char!r}", text)
+
+
+def _consume_escaped_identifier(text: str, index: int) -> int:
+    start = index
+    index += 1
+    if index >= len(text) or text[index].isspace():
+        raise SvaSyntaxError(start, "invalid escaped identifier", text)
+    while index < len(text) and not text[index].isspace():
+        index += 1
+    return index
 
 
 def _consume_numeric_literal(text: str, index: int) -> int:
@@ -233,4 +268,4 @@ def _consume_numeric_literal(text: str, index: int) -> int:
     return index
 
 
-__all__ = ["Token", "TokenKind", "tokenize"]
+__all__ = ["Token", "TokenKind", "tokenize", "tokenize_with_trivia"]

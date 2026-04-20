@@ -122,7 +122,7 @@ flowchart TD
 
 | Task ID | Owner / worker | Status      | Progress % | Last update | Blockers | Next action                                                                 |
 | ------- | -------------- | ----------- | ---------- | ----------- | -------- | --------------------------------------------------------------------------- |
-| T01     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, land trivia + preprocessor handling for `sva/lexer.py`               |
+| T01     | Codex          | DONE        | 100        | 2026-04-20  | —        | Landed lexer trivia + preprocessor support; T06 can build on the stabilized token stream |
 | T02     | Codex          | DONE        | 100        | 2026-04-20  | —        | Delivered atomic writers, diagnostics/logging, exports, and runtime tests    |
 | T03     | —              | NOT_STARTED | 0          | 2026-04-19  | —        | Claim, harden `runtime/process.py` (setsid, killpg, typed errors)           |
 | T04     | codex-t4       | DONE        | 100        | 2026-04-20  | —        | Delivered seedable `GenerationRng`, CLI `--seed`, determinism tests; T14 now unblocked |
@@ -381,6 +381,9 @@ Append new entries at the bottom. Never rewrite history.
 
 - 2026-04-19 — scaffolder — created — Planning + shared docs authored;
   project scaffold laid out; all tasks seeded as NOT_STARTED.
+- 2026-04-20 17:54 — T01 — Codex — NOT_STARTED -> IN_PROGRESS — Claimed lexer trivia and preprocessor tolerance task; reading docs and scaffolded files.
+- 2026-04-20 18:04 — T01 — Codex — IN_PROGRESS -> IN_PROGRESS — Temporarily touching `tests/timing/*` only to clear pre-existing unused-import lint failures that block required `ruff check src tests` validation.
+- 2026-04-20 18:05 — T01 — Codex — IN_PROGRESS -> DONE — Added trivia/preprocessor-aware lexing, new lexer tests, example corpus tokenization sweep, and cleared the repo-wide lint gate.
 
 <!-- Append new log entries below this line. -->
 - 2026-04-20 10:28 — T04 — codex-t4 — NOT_STARTED -> IN_PROGRESS — Claimed seedable RNG task; auditing `generate/` call-sites and CLI integration.
