@@ -10,7 +10,10 @@ import tempfile
 import time
 from typing import Any, Callable
 
+from sva_toolkit.data.cache import load_cached_result as _shared_load_cached_result
+from sva_toolkit.data.cache import write_cached_result as _shared_write_cached_result
 from sva_toolkit.describe import SVACoTBuilder, SVADTranslator
+from sva_toolkit.runtime.diagnostics import DEFAULT_DIAGNOSTICS, LOGGER, Diagnostics
 from sva_toolkit.runtime.llm import LLMClient, LLMConfig
 
 
@@ -28,27 +31,11 @@ def _dataset_cache_key(sva_code: str, model: str, *, generate_svad: bool, genera
 
 
 def _load_cached_result(cache_dir: str | None, cache_key: str) -> dict[str, Any] | None:
-    if cache_dir is None:
-        return None
-    cache_path = Path(cache_dir) / f"{cache_key}.json"
-    if not cache_path.exists():
-        return None
-    try:
-        cached = json.loads(cache_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    cached["from_cache"] = True
-    return cached
+    return _shared_load_cached_result(cache_dir, cache_key)
 
 
 def _write_cached_result(cache_dir: str | None, cache_key: str, payload: dict[str, Any]) -> None:
-    if cache_dir is None:
-        return
-    cache_path = Path(cache_dir) / f"{cache_key}.json"
-    try:
-        cache_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    except OSError:
-        return
+    _shared_write_cached_result(cache_dir, cache_key, payload)
 
 
 def _serialize_llm_config(llm_client: object | None) -> dict[str, Any] | None:
@@ -61,6 +48,10 @@ def _serialize_llm_config(llm_client: object | None) -> dict[str, Any] | None:
         "base_url": config.base_url,
         "temperature": config.temperature,
         "max_tokens": config.max_tokens,
+        "max_retries": getattr(config, "max_retries", 3),
+        "backoff_base": getattr(config, "backoff_base", 1.0),
+        "backoff_cap": getattr(config, "backoff_cap", 30.0),
+        "jitter": getattr(config, "jitter", True),
     }
 
 
@@ -145,6 +136,17 @@ def _process_dataset_item(
     return result
 
 
+def _surface_dataset_diagnostics(result: dict[str, Any], diagnostics: Diagnostics) -> None:
+    metadata = result.get("metadata", {})
+    if metadata.get("svad_source") != "translator_fallback":
+        return
+
+    diagnostics.record("translator_fallback", detail=str(metadata.get("svad_error", "")))
+    detail = metadata.get("svad_error")
+    suffix = f": {detail}" if detail else ""
+    LOGGER.warning("dataset entry %s used translator fallback%s", result.get("index"), suffix)
+
+
 def _worker_process_dataset_item(
     item_data: dict[str, Any],
     llm_config_dict: dict[str, Any] | None,
@@ -204,8 +206,12 @@ class DatasetBuilder:
         num_workers: int = 4,
         cache_dir: str | os.PathLike[str] | None = None,
         system_prompt: str | None = None,
+        diagnostics: Diagnostics | None = None,
     ) -> None:
+        self.diagnostics = diagnostics or DEFAULT_DIAGNOSTICS
         self.llm_client = llm_client
+        if self.llm_client is not None and hasattr(self.llm_client, "diagnostics"):
+            self.llm_client.diagnostics = self.diagnostics
         self.cot_builder = cot_builder or SVACoTBuilder()
         self.translator = translator or SVADTranslator()
         self.num_workers = num_workers
@@ -226,14 +232,16 @@ class DatasetBuilder:
         num_workers: int = 4,
         cache_dir: str | os.PathLike[str] | None = None,
         system_prompt: str | None = None,
+        diagnostics: Diagnostics | None = None,
     ) -> "DatasetBuilder":
         return cls(
-            llm_client=LLMClient(config),
+            llm_client=LLMClient(config, diagnostics=diagnostics),
             cot_builder=cot_builder,
             translator=translator,
             num_workers=num_workers,
             cache_dir=cache_dir,
             system_prompt=system_prompt,
+            diagnostics=diagnostics,
         )
 
     def generate_svad(self, sva_code: str) -> str:
@@ -272,6 +280,7 @@ class DatasetBuilder:
             user_prompt_template=self.SVAD_USER_PROMPT_TEMPLATE,
             cache_dir=self.cache_dir,
         )
+        _surface_dataset_diagnostics(result, self.diagnostics)
         return DatasetEntry(
             SVA=result["SVA"],
             SVAD=result.get("SVAD"),
@@ -435,6 +444,7 @@ class DatasetBuilder:
         completed = 0
         with Pool(processes=self.num_workers) as pool:
             for result in pool.imap_unordered(worker, items):
+                _surface_dataset_diagnostics(result, self.diagnostics)
                 results.append(result)
                 completed += 1
                 if progress_callback is not None:
@@ -467,6 +477,7 @@ class DatasetBuilder:
                 user_prompt_template=self.SVAD_USER_PROMPT_TEMPLATE,
                 cache_dir=self.cache_dir,
             )
+            _surface_dataset_diagnostics(result, self.diagnostics)
             results.append(result)
             if progress_callback is not None:
                 progress_callback(index, total)

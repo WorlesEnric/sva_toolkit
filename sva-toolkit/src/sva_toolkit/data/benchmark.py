@@ -12,6 +12,8 @@ import tempfile
 import time
 from typing import Any, Callable
 
+from sva_toolkit.data.cache import load_cached_result as _shared_load_cached_result
+from sva_toolkit.data.cache import write_cached_result as _shared_write_cached_result
 from sva_toolkit.formal import FormalService
 from sva_toolkit.runtime.llm import LLMClient, LLMConfig
 
@@ -33,27 +35,11 @@ def _benchmark_cache_key(svad: str, reference_sva: str, model: str) -> str:
 
 
 def _load_cached_result(cache_dir: str | None, cache_key: str) -> dict[str, Any] | None:
-    if cache_dir is None:
-        return None
-    cache_path = Path(cache_dir) / f"{cache_key}.json"
-    if not cache_path.exists():
-        return None
-    try:
-        cached = json.loads(cache_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    cached["from_cache"] = True
-    return cached
+    return _shared_load_cached_result(cache_dir, cache_key)
 
 
 def _write_cached_result(cache_dir: str | None, cache_key: str, payload: dict[str, Any]) -> None:
-    if cache_dir is None:
-        return
-    cache_path = Path(cache_dir) / f"{cache_key}.json"
-    try:
-        cache_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    except OSError:
-        return
+    _shared_write_cached_result(cache_dir, cache_key, payload)
 
 
 def _serialize_llm_config(llm_client: object) -> dict[str, Any]:
@@ -64,6 +50,10 @@ def _serialize_llm_config(llm_client: object) -> dict[str, Any]:
         "base_url": config.base_url,
         "temperature": config.temperature,
         "max_tokens": config.max_tokens,
+        "max_retries": getattr(config, "max_retries", 3),
+        "backoff_base": getattr(config, "backoff_base", 1.0),
+        "backoff_cap": getattr(config, "backoff_cap", 30.0),
+        "jitter": getattr(config, "jitter", True),
     }
 
 
