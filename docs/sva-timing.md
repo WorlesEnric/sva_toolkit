@@ -115,4 +115,5 @@ Core model classes live under `sva_toolkit.timing.core.scenario`, including:
 
 - [Architecture](architecture.md)
 - [Formal verification](sva-formal.md)
+- [Timing diagram dataset generation](timing-dataset-generation.md)
 - [Examples](../examples/README.md)
