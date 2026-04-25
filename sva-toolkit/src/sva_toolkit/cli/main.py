@@ -351,6 +351,84 @@ def timing_extract_sva(input_file: str, output: str | None, depth: int, timeout:
     _write_text_output(output, rendered)
 
 
+@timing.command("generate-dataset")
+@click.option("--count", type=int, default=10, show_default=True, help="Number of accepted items to generate.")
+@click.option("--seed", type=int, default=1, show_default=True, help="Master generation seed.")
+@click.option("--out", "out_dir", required=True, type=click.Path(file_okay=False), help="Output directory for the dataset.")
+@click.option("--split", type=str, default="train", show_default=True, help="Split label written into each record.")
+@click.option("--min-ticks", type=int, default=6, show_default=True)
+@click.option("--max-ticks", type=int, default=20, show_default=True)
+@click.option("--min-lanes", type=int, default=3, show_default=True)
+@click.option("--max-lanes", type=int, default=12, show_default=True)
+@click.option("--concrete-ratio", type=float, default=0.8, show_default=True)
+@click.option("--symbolic-ratio", type=float, default=0.1, show_default=True)
+@click.option("--mixed-ratio", type=float, default=0.1, show_default=True)
+@click.option("--max-retries", type=int, default=100, show_default=True, help="Per-item retry budget.")
+@click.option("--coverage-target", type=int, default=0, show_default=True, help="Optional per-bucket coverage target.")
+@click.option("--holdout-topology", type=str, default=None, help="Topology name to hold out from generation.")
+@click.option("--holdout-flavor", type=str, default=None, help="Flavor name to hold out from generation.")
+@click.option("--cuts-probability", type=float, default=0.3, show_default=True)
+@click.option("--distractor-probability", type=float, default=0.3, show_default=True)
+@click.option("--format", "output_format", type=click.Choice(["svg", "png", "both", "none"]), default="svg", show_default=True, help="Image format(s) to render alongside DSL.")
+@click.option("--summary-json", type=click.Path(dir_okay=False), default=None, help="Optional path for the run summary JSON.")
+def timing_generate_dataset(
+    count: int,
+    seed: int,
+    out_dir: str,
+    split: str,
+    min_ticks: int,
+    max_ticks: int,
+    min_lanes: int,
+    max_lanes: int,
+    concrete_ratio: float,
+    symbolic_ratio: float,
+    mixed_ratio: float,
+    max_retries: int,
+    coverage_target: int,
+    holdout_topology: str | None,
+    holdout_flavor: str | None,
+    cuts_probability: float,
+    distractor_probability: float,
+    output_format: str,
+    summary_json: str | None,
+) -> None:
+    """Generate a procedural Image-DSL dataset for the timing diagram DSL."""
+    from sva_toolkit.timing.generate import generate_dataset
+
+    render_svg = output_format in {"svg", "both"}
+    render_png = output_format in {"png", "both"}
+
+    summary = generate_dataset(
+        count=count,
+        seed=seed,
+        out_dir=out_dir,
+        split=split,
+        min_ticks=min_ticks,
+        max_ticks=max_ticks,
+        min_lanes=min_lanes,
+        max_lanes=max_lanes,
+        concrete_ratio=concrete_ratio,
+        symbolic_ratio=symbolic_ratio,
+        mixed_ratio=mixed_ratio,
+        max_retries=max_retries,
+        coverage_target=coverage_target,
+        holdout_topology=holdout_topology,
+        holdout_flavor=holdout_flavor,
+        render_svg=render_svg,
+        render_png=render_png,
+        cuts_probability=cuts_probability,
+        distractor_probability=distractor_probability,
+    )
+
+    if summary_json:
+        atomic_write_text(summary_json, json.dumps(summary, indent=2) + "\n")
+
+    click.echo(
+        f"generated {summary['count']} items into {summary['out_dir']} "
+        f"(records.jsonl: {summary['records_path']})"
+    )
+
+
 @timing.command("bundle-sva")
 @click.argument("input_files", nargs=-1, type=click.Path(exists=True, dir_okay=False))
 @click.option("-o", "--output", type=click.Path(dir_okay=False))
