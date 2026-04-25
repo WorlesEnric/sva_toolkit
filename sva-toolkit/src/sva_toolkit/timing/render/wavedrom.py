@@ -341,7 +341,7 @@ def _build_event_overlay_group(
 ) -> ET.Element:
     """Build the event-label overlay group."""
 
-    group = ET.Element(_svg("g"), {"id": "timing-event-overlays"})
+    group = ET.Element(_svg("g"), {"id": "timing-event-overlays", "class": "timing-event-overlays"})
     if not placements:
         return group
 
@@ -418,7 +418,7 @@ def _build_rule_overlay_group(
 ) -> ET.Element:
     """Build the response-arrow overlay group."""
 
-    group = ET.Element(_svg("g"), {"id": "timing-rule-overlays"})
+    group = ET.Element(_svg("g"), {"id": "timing-rule-overlays", "class": "timing-rule-overlays"})
     for placement in placements:
         y = OVERLAY_TOP_PADDING + placement.track * RULE_TRACK_PITCH + 12.0
         label_center = placement.start_x + 14.0 if placement.loop else (placement.start_x + placement.end_x) / 2.0
@@ -466,7 +466,7 @@ def _build_hold_highlight_group(view: WaveDromScenarioView, layout: WaveDromLayo
         return None
 
     lane_index = {lane.name: index for index, lane in enumerate(view.lanes)}
-    group = ET.Element(_svg("g"), {"id": "timing-hold-highlights"})
+    group = ET.Element(_svg("g"), {"id": "timing-hold-highlights", "class": "timing-hold-highlights"})
 
     for span in view.hold_spans:
         x = layout.plot_origin_x + span.start_tick * layout.tick_width + 1.0
@@ -495,7 +495,14 @@ def _build_hold_highlight_group(view: WaveDromScenarioView, layout: WaveDromLayo
 def _build_summary_group(top_y: float, lines: Sequence[SummaryLine]) -> ET.Element:
     """Build the footer summary group for rule text."""
 
-    group = ET.Element(_svg("g"), {"id": "timing-rule-summary", "transform": f"translate(0,{_fmt(top_y)})"})
+    group = ET.Element(
+        _svg("g"),
+        {
+            "id": "timing-rule-summary",
+            "class": "timing-rule-summary",
+            "transform": f"translate(0,{_fmt(top_y)})",
+        },
+    )
     heading = ET.SubElement(
         group,
         _svg("text"),

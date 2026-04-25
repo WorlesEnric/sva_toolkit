@@ -9,6 +9,25 @@ from dataclasses import dataclass
 
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+VALUE_TOKENS: tuple[str, ...] = (
+    "00",
+    "01",
+    "02",
+    "0A",
+    "10",
+    "1F",
+    "33",
+    "55",
+    "7E",
+    "A1",
+    "A5",
+    "BE",
+    "D0",
+    "EE",
+    "F0",
+    "FF",
+)
+
 
 @dataclass(frozen=True)
 class NameFlavor:
@@ -104,6 +123,14 @@ FLAVORS: dict[str, NameFlavor] = {
         bus_widths=("8", "16", "32"),
         naming_style="snake_case",
     ),
+    "compact": NameFlavor(
+        name="compact",
+        clock="clk",
+        bit_signals=("v", "r", "g", "s", "d", "c", "x", "b"),
+        bus_signals=("a", "da", "id", "tg"),
+        bus_widths=("8", "16", "32"),
+        naming_style="short",
+    ),
 }
 
 
@@ -115,6 +142,7 @@ PARAM_NAMES_BY_FLAVOR: dict[str, tuple[str, ...]] = {
     "dma": ("DESC_MAX", "DMA_MAX"),
     "interrupt": ("IRQ_MAX", "ACK_MAX"),
     "memory": ("CMD_MAX", "RSP_MAX"),
+    "compact": ("M", "N", "K"),
 }
 
 

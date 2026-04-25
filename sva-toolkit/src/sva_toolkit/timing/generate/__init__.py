@@ -9,6 +9,7 @@ from sva_toolkit.timing.generate.model import (
     GenerationError,
     GenerationSpec,
 )
+from sva_toolkit.timing.generate.validate_dataset import validate_dataset
 
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "GenerationRng",
     "GenerationSpec",
     "generate_dataset",
+    "validate_dataset",
 ]

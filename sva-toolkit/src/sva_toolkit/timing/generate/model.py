@@ -21,9 +21,10 @@ class EventNode:
 
     id: str
     role: str = "state"
-    predicate_kind: str = "rise"  # rise|fall|high|low|all_high|stable_eq
+    predicate_kind: str = "rise"  # rise|fall|high|low|change|stable|eq|neq|all_high|all_high_eq
     primary_signal: str | None = None
     extra_signals: tuple[str, ...] = ()
+    bus_signal: str | None = None
     eq_value: str | None = None
 
 
@@ -66,6 +67,7 @@ class ScenarioComponents:
     lane_constraints: list[LaneConstraint] = field(default_factory=list)
     anchor_node_map: dict[str, EventNode] = field(default_factory=dict)
     edges: list[TemporalEdge] = field(default_factory=list)
+    response_overlay_targets: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -83,6 +85,10 @@ class GenerationSpec:
     cuts_enabled: bool
     distractor_lanes: int
     tick_budget: int
+    clock_edge: str = "posedge"
+    predicate_bias: tuple[str, ...] = ()
+    region_bias: tuple[str, ...] = ()
+    cut_placement_bias: tuple[str, ...] = ()
 
 
 @dataclass
@@ -98,3 +104,13 @@ class GeneratedItem:
 
 class GenerationError(RuntimeError):
     """Raised when an internal generator step cannot produce a valid candidate."""
+
+    def __init__(self, message: str, *, reason: str | None = None) -> None:
+        super().__init__(message)
+        self.reason = reason or _reason_from_message(message)
+
+
+def _reason_from_message(message: str) -> str:
+    normalized = "".join(char.lower() if char.isalnum() else "_" for char in message.strip())
+    normalized = "_".join(part for part in normalized.split("_") if part)
+    return normalized[:80] or "generation_error"

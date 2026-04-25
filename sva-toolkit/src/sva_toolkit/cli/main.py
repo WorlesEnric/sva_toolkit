@@ -365,8 +365,13 @@ def timing_extract_sva(input_file: str, output: str | None, depth: int, timeout:
 @click.option("--mixed-ratio", type=float, default=0.1, show_default=True)
 @click.option("--max-retries", type=int, default=100, show_default=True, help="Per-item retry budget.")
 @click.option("--coverage-target", type=int, default=0, show_default=True, help="Optional per-bucket coverage target.")
+@click.option("--coverage-required", type=str, default="", help="CSV of required coverage values as bucket=value.")
 @click.option("--holdout-topology", type=str, default=None, help="Topology name to hold out from generation.")
 @click.option("--holdout-flavor", type=str, default=None, help="Flavor name to hold out from generation.")
+@click.option("--holdout-bound", type=str, default="", help="CSV of bound kinds to hold out.")
+@click.option("--holdout-size", type=click.Choice(["small", "medium", "large"]), default=None, help="Size bucket to hold out.")
+@click.option("--holdout-rendering", type=click.Choice(["symbolic", "mixed", "concrete"]), default=None, help="Rendering mode to hold out.")
+@click.option("--split-policy", type=click.Choice(["random", "topology", "flavor", "bound", "size", "rendering"]), default="random", show_default=True)
 @click.option("--cuts-probability", type=float, default=0.3, show_default=True)
 @click.option("--distractor-probability", type=float, default=0.3, show_default=True)
 @click.option("--format", "output_format", type=click.Choice(["svg", "png", "both", "none"]), default="svg", show_default=True, help="Image format(s) to render alongside DSL.")
@@ -385,40 +390,53 @@ def timing_generate_dataset(
     mixed_ratio: float,
     max_retries: int,
     coverage_target: int,
+    coverage_required: str,
     holdout_topology: str | None,
     holdout_flavor: str | None,
+    holdout_bound: str,
+    holdout_size: str | None,
+    holdout_rendering: str | None,
+    split_policy: str,
     cuts_probability: float,
     distractor_probability: float,
     output_format: str,
     summary_json: str | None,
 ) -> None:
     """Generate a procedural Image-DSL dataset for the timing diagram DSL."""
-    from sva_toolkit.timing.generate import generate_dataset
+    from sva_toolkit.timing.generate import GenerationError, generate_dataset
 
     render_svg = output_format in {"svg", "both"}
     render_png = output_format in {"png", "both"}
 
-    summary = generate_dataset(
-        count=count,
-        seed=seed,
-        out_dir=out_dir,
-        split=split,
-        min_ticks=min_ticks,
-        max_ticks=max_ticks,
-        min_lanes=min_lanes,
-        max_lanes=max_lanes,
-        concrete_ratio=concrete_ratio,
-        symbolic_ratio=symbolic_ratio,
-        mixed_ratio=mixed_ratio,
-        max_retries=max_retries,
-        coverage_target=coverage_target,
-        holdout_topology=holdout_topology,
-        holdout_flavor=holdout_flavor,
-        render_svg=render_svg,
-        render_png=render_png,
-        cuts_probability=cuts_probability,
-        distractor_probability=distractor_probability,
-    )
+    try:
+        summary = generate_dataset(
+            count=count,
+            seed=seed,
+            out_dir=out_dir,
+            split=split,
+            min_ticks=min_ticks,
+            max_ticks=max_ticks,
+            min_lanes=min_lanes,
+            max_lanes=max_lanes,
+            concrete_ratio=concrete_ratio,
+            symbolic_ratio=symbolic_ratio,
+            mixed_ratio=mixed_ratio,
+            max_retries=max_retries,
+            coverage_target=coverage_target,
+            coverage_required=coverage_required,
+            holdout_topology=holdout_topology,
+            holdout_flavor=holdout_flavor,
+            holdout_bound=holdout_bound,
+            holdout_size=holdout_size,
+            holdout_rendering=holdout_rendering,
+            split_policy=split_policy,
+            render_svg=render_svg,
+            render_png=render_png,
+            cuts_probability=cuts_probability,
+            distractor_probability=distractor_probability,
+        )
+    except (GenerationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
 
     if summary_json:
         atomic_write_text(summary_json, json.dumps(summary, indent=2) + "\n")
@@ -427,6 +445,33 @@ def timing_generate_dataset(
         f"generated {summary['count']} items into {summary['out_dir']} "
         f"(records.jsonl: {summary['records_path']})"
     )
+
+
+@timing.command("validate-dataset")
+@click.option("--dataset", "dataset_dir", required=True, type=click.Path(file_okay=False), help="Generated dataset directory.")
+@click.option("--strict", is_flag=True, help="Exit non-zero when validation reports any failure category.")
+@click.option(
+    "--strict-first-occurrence/--any-pair",
+    default=True,
+    show_default=True,
+    help="Validate windows and constraints using first visible anchor occurrences.",
+)
+def timing_validate_dataset(dataset_dir: str, strict: bool, strict_first_occurrence: bool) -> None:
+    """Validate a generated timing Image-DSL dataset."""
+    from sva_toolkit.timing.generate.validate_dataset import (
+        format_validation_summary,
+        validate_dataset,
+        validation_has_failures,
+    )
+
+    try:
+        result = validate_dataset(dataset_dir, strict=strict_first_occurrence)
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(format_validation_summary(result))
+    if strict and validation_has_failures(result):
+        raise click.ClickException("dataset validation failed")
 
 
 @timing.command("bundle-sva")

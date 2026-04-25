@@ -40,7 +40,12 @@ def test_render_diagram_png_raises_runtime_error_when_cairosvg_missing(
 
 
 def test_render_diagram_png_writes_non_empty_png_output(tmp_path) -> None:
-    pytest.importorskip("cairosvg")
+    try:
+        import cairosvg
+
+        cairosvg.svg2png(bytestring=b'<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>')
+    except (ImportError, OSError) as exc:
+        pytest.skip(f"cairosvg native dependencies are unavailable: {exc}")
 
     output_path = tmp_path / "diagram.png"
     render_diagram_png(_concrete_document(), output_path)
