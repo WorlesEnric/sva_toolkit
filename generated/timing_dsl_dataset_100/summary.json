@@ -1,0 +1,98 @@
+{
+  "count": 100,
+  "seed": 20260426,
+  "split": "train",
+  "split_policy": "random",
+  "out_dir": "../generated/timing_dsl_dataset_100",
+  "records_path": "../generated/timing_dsl_dataset_100/records.jsonl",
+  "summary_path": "../generated/timing_dsl_dataset_100/summary.json",
+  "coverage": {
+    "topology": {
+      "fork": 12,
+      "chain": 13,
+      "join": 8,
+      "parallel": 13,
+      "burst": 18,
+      "backpressure": 18,
+      "setup_hold": 9,
+      "single_response": 9
+    },
+    "idiom": {
+      "hold_until": 63,
+      "stable_while": 60,
+      "not_before": 72,
+      "response": 37,
+      "cut": 32,
+      "burst": 11,
+      "backpressure": 11
+    },
+    "tick_count": {
+      "13-20": 51,
+      "7-12": 45,
+      "0-6": 4
+    },
+    "lane_count": {
+      "7-12": 77,
+      "4-6": 23
+    },
+    "lane_kind": {
+      "mixed": 97,
+      "bit_only": 3
+    },
+    "anchor_count": {
+      "3-5": 71,
+      "0-2": 29
+    },
+    "window_count": {
+      "2-4": 71,
+      "1": 29
+    },
+    "bound_kind": {
+      "parameterized": 37,
+      "exact": 32,
+      "range": 51,
+      "unbounded": 4
+    },
+    "predicate": {
+      "change": 9,
+      "fall": 9,
+      "rise": 84,
+      "eq": 37,
+      "high": 84,
+      "low": 10,
+      "neq": 2,
+      "stable": 5
+    },
+    "region": {
+      "after": 41,
+      "at": 53,
+      "before": 72,
+      "from_until": 84,
+      "in": 48
+    },
+    "cut": {
+      "after": 12,
+      "between": 11,
+      "before": 9,
+      "none": 68
+    },
+    "rendering": {
+      "concrete": 80,
+      "symbolic": 10,
+      "mixed": 10
+    },
+    "naming": {
+      "snake_case": 64,
+      "uppercase": 8,
+      "protocol_like": 12,
+      "short": 16
+    }
+  },
+  "rejections": {
+    "lane_count_out_of_range": 6,
+    "visual_filter_failed": 3,
+    "window_bound_inconsistent": 5,
+    "lane_constraint_unsatisfied": 12,
+    "rendering_mode_quota": 30
+  }
+}
