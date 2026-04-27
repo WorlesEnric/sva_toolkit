@@ -1,2 +1,3 @@
 v1/properties.json
-.worktrees/
+.codex_orchestrator/
+.worktrees/.codex_orchestrator/

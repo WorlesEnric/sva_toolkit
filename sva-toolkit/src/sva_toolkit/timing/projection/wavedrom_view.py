@@ -5,18 +5,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Mapping, Sequence
 
-from sva_toolkit.timing.core.conditions import Condition, Predicate
+from sva_toolkit.timing.core.conditions import Condition
 from sva_toolkit.timing.core.scenario import (
     ClockingSpec,
     ConstraintRegion,
-    CutMeaning,
-    CutPlacement,
     LaneConstraint,
     PropertyOverlay,
     ScenarioDocument,
     SignalKind,
     TimeWindow,
     WindowBoundKind,
+)
+from sva_toolkit.timing.projection.tick_solver import (
+    _apply_anchor_condition,
+    _apply_span_semantics,
+    _canonical_tick_assignment,
+    _infer_window_spans,
 )
 
 
@@ -115,228 +119,6 @@ def can_render_with_wavedrom(document: ScenarioDocument) -> bool:
         return False
 
     return True
-
-
-def _canonical_tick_assignment(document: ScenarioDocument) -> dict[str, int]:
-    """Assign absolute ticks to anchors via topological longest-path over the window graph.
-
-    Uses earliest-legal-tick policy: roots get the base offset, successors get
-    predecessor_tick + min_delay (or max_delay when finite).
-    Raises ValueError on unresolvable conflicts.
-    """
-    all_anchors = {a.name for a in document.anchors}
-    offset = 0
-    for cut in document.cuts:
-        if cut.placement == CutPlacement.BEFORE_ANCHOR and cut.meaning == CutMeaning.OMITTED_HISTORY:
-            offset = 1
-            break
-
-    # Build adjacency: anchor -> [(target_anchor, delay)]
-    successors: dict[str, list[tuple[str, int]]] = {name: [] for name in all_anchors}
-    in_degree: dict[str, int] = {name: 0 for name in all_anchors}
-
-    for window in document.windows:
-        if window.start_anchor not in all_anchors or window.end_anchor not in all_anchors:
-            continue
-        # Use max_delay when finite for better visual "reach"; fall back to min_delay
-        delay_str = window.bound.max_delay if window.bound.max_delay and window.bound.max_delay != "$" else window.bound.min_delay
-        try:
-            delay = int(delay_str) if delay_str else 0
-        except ValueError:
-            delay = 1
-        successors[window.start_anchor].append((window.end_anchor, delay))
-        in_degree[window.end_anchor] = in_degree.get(window.end_anchor, 0) + 1
-
-    # Kahn's algorithm with longest-path tick assignment
-    ticks: dict[str, int] = {}
-    queue = sorted(name for name in all_anchors if in_degree.get(name, 0) == 0)
-    for root in queue:
-        ticks[root] = offset
-
-    q = list(queue)
-    while q:
-        q.sort()
-        node = q.pop(0)
-        for target, delay in successors.get(node, []):
-            proposed = ticks[node] + delay
-            if target in ticks:
-                ticks[target] = max(ticks[target], proposed)
-            else:
-                ticks[target] = proposed
-            in_degree[target] -= 1
-            if in_degree[target] == 0:
-                q.append(target)
-
-    for name in all_anchors:
-        if name not in ticks:
-            ticks[name] = offset
-
-    return ticks
-
-
-def _apply_anchor_condition(
-    cond: Condition, signals: dict[str, list[str]], tick: int,
-    signal_kinds: dict[str, SignalKind] | None = None,
-) -> None:
-    """Apply point-event anchor conditions at the given tick."""
-    if cond.kind == "predicate" and cond.predicate is not None:
-        p = cond.predicate
-        if not p.signal or p.signal not in signals:
-            return
-        samples = signals[p.signal]
-        if tick < 0 or tick >= len(samples):
-            return
-        if p.op == "high":
-            samples[tick] = "1"
-        elif p.op == "low":
-            samples[tick] = "0"
-        elif p.op == "rise":
-            if tick > 0:
-                samples[tick - 1] = "0"
-            samples[tick] = "1"
-            if tick + 1 < len(samples):
-                samples[tick + 1] = "1"
-        elif p.op == "fall":
-            if tick > 0:
-                samples[tick - 1] = "1"
-            samples[tick] = "0"
-            if tick + 1 < len(samples):
-                samples[tick + 1] = "0"
-        elif p.op == "eq":
-            samples[tick] = p.value or "1"
-        elif p.op == "stable":
-            is_bus = (signal_kinds or {}).get(p.signal, SignalKind.BIT) == SignalKind.BUS
-            if is_bus and samples[tick] == "x":
-                samples[tick] = p.signal
-    elif cond.kind == "all":
-        for item in cond.items:
-            _apply_anchor_condition(item, signals, tick, signal_kinds)
-
-
-def _collect_condition_predicates(cond: Condition) -> list[Predicate]:
-    """Collect all leaf predicates from a condition tree."""
-    if cond.kind == "predicate" and cond.predicate is not None:
-        return [cond.predicate]
-    if cond.kind in ("all", "any", "not") and cond.items:
-        return [p for item in cond.items for p in _collect_condition_predicates(item)]
-    return []
-
-
-def _infer_window_spans(
-    document: ScenarioDocument,
-    signals: dict[str, list[str]],
-    anchor_ticks: dict[str, int],
-    signal_kinds: dict[str, SignalKind],
-    ticks: int,
-) -> None:
-    """Infer span-level fills from window endpoints when lane_constraints are absent.
-
-    When SVA extraction produces windows connecting anchors with stable/high/low
-    conditions but no explicit lane_constraints, this pass infers the intended
-    span semantics and fills signal samples accordingly.
-    """
-    if document.lane_constraints:
-        return  # explicit constraints take precedence
-
-    anchor_map = {a.name: a for a in document.anchors}
-
-    for window in document.windows:
-        start_tick = anchor_ticks.get(window.start_anchor)
-        end_tick = anchor_ticks.get(window.end_anchor)
-        if start_tick is None or end_tick is None:
-            continue
-
-        lo = max(0, min(start_tick, end_tick))
-        hi = min(max(start_tick, end_tick), ticks - 1)
-
-        # Collect predicates from both endpoint anchors
-        for anchor_name in (window.start_anchor, window.end_anchor):
-            anchor = anchor_map.get(anchor_name)
-            if anchor is None:
-                continue
-            for pred in _collect_condition_predicates(anchor.condition):
-                if not pred.signal or pred.signal not in signals:
-                    continue
-                is_bus = signal_kinds.get(pred.signal, SignalKind.BIT) == SignalKind.BUS
-                samples = signals[pred.signal]
-
-                fill_val: str | None = None
-                if pred.op == "stable" and is_bus:
-                    fill_val = pred.signal
-                elif pred.op == "eq":
-                    fill_val = pred.value or pred.signal
-                elif pred.op == "high":
-                    fill_val = "1"
-                elif pred.op == "low":
-                    fill_val = "0"
-
-                if fill_val is None:
-                    continue
-
-                for t in range(lo, hi + 1):
-                    current = samples[t]
-                    # Only fill default values; don't overwrite existing meaningful data
-                    if current in ("x", "0", "") or current == fill_val:
-                        samples[t] = fill_val
-
-
-def _apply_span_semantics(
-    document: ScenarioDocument,
-    signals: dict[str, list[str]],
-    anchor_ticks: dict[str, int],
-    signal_kinds: dict[str, SignalKind],
-) -> None:
-    """Enforce span-level semantics from lane_constraints on the signal samples.
-
-    Walks lane_constraints and fills intervals with required values.
-    Raises ValueError on conflicts (e.g. same tick requires high and low).
-    """
-    for constraint in document.lane_constraints:
-        start_tick: int | None = None
-        end_tick: int | None = None
-
-        if constraint.region == ConstraintRegion.FROM_UNTIL:
-            start_tick = anchor_ticks.get(constraint.start_anchor) if constraint.start_anchor else None
-            end_tick = anchor_ticks.get(constraint.end_anchor) if constraint.end_anchor else None
-        elif constraint.region == ConstraintRegion.BEFORE:
-            start_tick = 0
-            end_tick = (anchor_ticks[constraint.anchor] - 1) if constraint.anchor and constraint.anchor in anchor_ticks else None
-        elif constraint.region == ConstraintRegion.AT:
-            at_tick = anchor_ticks.get(constraint.anchor) if constraint.anchor else None
-            if at_tick is not None:
-                start_tick = at_tick
-                end_tick = at_tick
-
-        if start_tick is None or end_tick is None:
-            continue
-
-        for signal_name in constraint.signals:
-            if signal_name not in signals:
-                continue
-            samples = signals[signal_name]
-            is_bus = signal_kinds.get(signal_name, SignalKind.BIT) == SignalKind.BUS
-
-            for t in range(max(0, start_tick), min(end_tick + 1, len(samples))):
-                target_val: str | None = None
-                if constraint.relation == "high":
-                    target_val = "1"
-                elif constraint.relation == "low":
-                    target_val = "0"
-                elif constraint.relation == "stable":
-                    target_val = signal_name if is_bus else "1"
-                elif constraint.relation == "eq":
-                    target_val = constraint.value or ("x" if is_bus else "1")
-                elif constraint.relation in ("rise", "fall", "change", "neq"):
-                    continue  # boundary/negative predicates, not span fillers
-
-                if target_val is not None:
-                    current = samples[t]
-                    # If the current value was already set (non-default) and
-                    # disagrees with the constraint, skip — anchor point
-                    # conditions take priority over span constraints.
-                    if current not in ("0", "x", "") and current != target_val:
-                        continue
-                    samples[t] = target_val
 
 
 def build_wavedrom_view(document: ScenarioDocument) -> WaveDromScenarioView:

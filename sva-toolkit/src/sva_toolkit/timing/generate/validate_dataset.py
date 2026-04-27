@@ -22,6 +22,7 @@ from sva_toolkit.timing.frontend.validate import validate_diagram
 from sva_toolkit.timing.generate.coverage import CoverageTracker
 from sva_toolkit.timing.generate.waveform import _constraint_holds
 from sva_toolkit.timing.projection.wavedrom_view import evaluate_condition
+from sva_toolkit.timing.render2.serialization import spec_from_dict
 
 
 _DIVERSITY_THRESHOLDS = {
@@ -40,6 +41,7 @@ def validate_dataset(
     *,
     coverage_thresholds: Mapping[str, int] | None = None,
     strict: bool = True,
+    strict_visual: bool = False,
 ) -> dict[str, Any]:
     """Validate generated records for syntactic, semantic, visual, and utility issues."""
 
@@ -57,6 +59,7 @@ def validate_dataset(
     svg_hashes: dict[str, list[str]] = defaultdict(list)
     feature_signature_distribution: Counter[str] = Counter()
     records_total = 0
+    visual_metadata_failures: list[dict[str, Any]] = []
 
     def add_failure(record_id: str, reason: str, detail: str) -> None:
         failures.append({"id": record_id, "reason": reason, "detail": detail})
@@ -85,7 +88,11 @@ def validate_dataset(
             continue
 
         canonical_hashes[_sha256(canonical_dsl)].append(record_id)
-        _validate_dsl_file(dataset_path, record, canonical_dsl, record_id, add_failure)
+        target = record.get("target") or {}
+        expected_dsl_file = target.get("visual_canonical_dsl") if isinstance(target, dict) else None
+        if not isinstance(expected_dsl_file, str) or not expected_dsl_file.strip():
+            expected_dsl_file = canonical_dsl
+        _validate_dsl_file(dataset_path, record, expected_dsl_file, record_id, add_failure)
 
         parsed: ScenarioDocument | None = None
         try:
@@ -118,6 +125,9 @@ def validate_dataset(
         if svg_text is not None:
             svg_hashes[_sha256(svg_text)].append(record_id)
             _validate_svg(parsed, svg_text, record_id, add_failure)
+        visual_metadata_failures.extend(
+            _validate_visual_metadata(dataset_path, record, record_id, add_failure, strict_visual=strict_visual)
+        )
 
     duplicate_canonical_records = _duplicate_records(canonical_hashes)
     duplicate_svg_records = _duplicate_records(svg_hashes)
@@ -141,6 +151,7 @@ def validate_dataset(
         for bucket, threshold in sorted(thresholds.items())
         if coverage_summary.get(bucket, 0) < threshold
     ]
+    visual_coverage_failures = _validate_visual_coverage_summary(dataset_path, strict_visual=strict_visual)
 
     return {
         "records_total": records_total,
@@ -148,6 +159,8 @@ def validate_dataset(
         "failures": failures,
         "coverage_summary": coverage_summary,
         "coverage_failures": coverage_failures,
+        "visual_metadata_failures": visual_metadata_failures,
+        "visual_coverage_failures": visual_coverage_failures,
         "duplicate_canonical_dsl": sum(len(item["ids"]) - 1 for item in duplicate_canonical_records),
         "duplicate_canonical_dsl_records": duplicate_canonical_records,
         "duplicate_svg": sum(len(item["ids"]) - 1 for item in duplicate_svg_records),
@@ -167,6 +180,8 @@ def validation_has_failures(result: Mapping[str, Any]) -> bool:
         or result.get("duplicate_canonical_dsl")
         or result.get("duplicate_svg")
         or result.get("useless_diagrams")
+        or result.get("visual_metadata_failures")
+        or result.get("visual_coverage_failures")
     )
 
 
@@ -184,6 +199,12 @@ def format_validation_summary(result: Mapping[str, Any]) -> str:
     coverage_failures = result.get("coverage_failures") or []
     if coverage_failures:
         lines.append(f"coverage_failures: {json.dumps(coverage_failures, sort_keys=True)}")
+    visual_coverage_failures = result.get("visual_coverage_failures") or []
+    if visual_coverage_failures:
+        lines.append(f"visual_coverage_failures: {json.dumps(visual_coverage_failures, sort_keys=True)}")
+    visual_metadata_failures = result.get("visual_metadata_failures") or []
+    if visual_metadata_failures:
+        lines.append(f"visual_metadata_failures: {json.dumps(visual_metadata_failures[:10], sort_keys=True)}")
     failures = result.get("failures") or []
     if failures:
         lines.append("failures:")
@@ -459,6 +480,105 @@ def _sample_map(document: ScenarioDocument) -> dict[str, tuple[str, ...]]:
     return {signal.name: tuple(signal.samples) for signal in document.signals if signal.samples}
 
 
+def _validate_visual_metadata(
+    dataset_path: Path,
+    record: Mapping[str, Any],
+    record_id: str,
+    add_failure,
+    *,
+    strict_visual: bool,
+) -> list[dict[str, Any]]:
+    failures: list[dict[str, Any]] = []
+    render_spec_path = record.get("render_spec_path")
+    audits_path = record.get("audits_path")
+    if not render_spec_path and not audits_path and not strict_visual:
+        return failures
+
+    if not isinstance(render_spec_path, str) or not render_spec_path:
+        failure = {"id": record_id, "reason": "render_spec_missing", "detail": "record is missing render_spec_path"}
+        failures.append(failure)
+        if strict_visual:
+            add_failure(record_id, failure["reason"], failure["detail"])
+    else:
+        full_path = dataset_path / render_spec_path
+        if not full_path.is_file():
+            failure = {"id": record_id, "reason": "render_spec_missing", "detail": f"file does not exist: {render_spec_path}"}
+            failures.append(failure)
+            if strict_visual:
+                add_failure(record_id, failure["reason"], failure["detail"])
+        else:
+            try:
+                spec_from_dict(json.loads(full_path.read_text(encoding="utf-8")))
+            except Exception as exc:
+                failure = {
+                    "id": record_id,
+                    "reason": "render_spec_parse",
+                    "detail": f"{exc.__class__.__name__}: {exc}",
+                }
+                failures.append(failure)
+                if strict_visual:
+                    add_failure(record_id, failure["reason"], failure["detail"])
+
+    if not isinstance(audits_path, str) or not audits_path:
+        failure = {"id": record_id, "reason": "audits_missing", "detail": "record is missing audits_path"}
+        failures.append(failure)
+        if strict_visual:
+            add_failure(record_id, failure["reason"], failure["detail"])
+        return failures
+
+    full_audits_path = dataset_path / audits_path
+    if not full_audits_path.is_file():
+        failure = {"id": record_id, "reason": "audits_missing", "detail": f"file does not exist: {audits_path}"}
+        failures.append(failure)
+        if strict_visual:
+            add_failure(record_id, failure["reason"], failure["detail"])
+        return failures
+
+    try:
+        audits = json.loads(full_audits_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        failure = {"id": record_id, "reason": "audits_parse", "detail": f"{exc.__class__.__name__}: {exc}"}
+        failures.append(failure)
+        if strict_visual:
+            add_failure(record_id, failure["reason"], failure["detail"])
+        return failures
+
+    audit_status = audits.get("audit_status") if isinstance(audits, dict) else None
+    leakage = audit_status.get("leakage") if isinstance(audit_status, dict) else None
+    if leakage != "pass":
+        failure = {
+            "id": record_id,
+            "reason": "leakage_audit",
+            "detail": f"expected audit_status.leakage == pass, got {leakage!r}",
+        }
+        failures.append(failure)
+        if strict_visual:
+            add_failure(record_id, failure["reason"], failure["detail"])
+    return failures
+
+
+def _validate_visual_coverage_summary(dataset_path: Path, *, strict_visual: bool) -> list[dict[str, Any]]:
+    if not strict_visual:
+        return []
+    summary_path = dataset_path / "summary.json"
+    if not summary_path.is_file():
+        return [{"axis": "summary", "reason": "summary_missing"}]
+    try:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [{"axis": "summary", "reason": "summary_parse", "detail": str(exc)}]
+    coverage = summary.get("coverage") if isinstance(summary, dict) else None
+    visual = coverage.get("visual") if isinstance(coverage, dict) else None
+    if not isinstance(visual, dict):
+        return [{"axis": "visual", "reason": "visual_coverage_missing"}]
+    failures = []
+    for axis in ("renderer_id", "profile", "annotation_policy"):
+        values = visual.get(axis)
+        if not isinstance(values, dict) or not values:
+            failures.append({"axis": axis, "reason": "visual_axis_empty"})
+    return failures
+
+
 def _read_svg(
     dataset_path: Path,
     record: Mapping[str, Any],
@@ -467,6 +587,8 @@ def _read_svg(
 ) -> str | None:
     svg_path = record.get("svg_path")
     if not isinstance(svg_path, str) or not svg_path:
+        if record.get("image_path"):
+            return None
         add_failure(record_id, "visual_recoverability", "record is missing svg_path")
         return None
     full_path = dataset_path / svg_path

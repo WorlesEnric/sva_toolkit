@@ -38,12 +38,21 @@ from sva_toolkit.timing.generate.model import (
     ScenarioComponents,
 )
 from sva_toolkit.timing.generate.names import FLAVORS
+from sva_toolkit.timing.generate.render_pipeline import (
+    DatasetRenderRecord,
+    generate_one_record,
+    profile_by_id,
+    profile_set_by_id,
+    target_policy_from_name,
+)
+from sva_toolkit.timing.generate.splits import SPLIT_PLANS
 from sva_toolkit.timing.generate.topology import TOPOLOGIES, build_topology
 from sva_toolkit.timing.generate.waveform import (
     assign_ticks,
     attach_samples,
     synthesize_waveforms,
 )
+from sva_toolkit.timing.render2.visual_coverage import VisualCoverageTracker
 from sva_toolkit.timing.render.svg import render_diagram_svg
 
 
@@ -133,6 +142,14 @@ def generate_dataset(
     cuts_probability: float = 0.3,
     distractor_probability: float = 0.3,
     split: str = "train",
+    render_profile: str | None = None,
+    render_profile_set: str = "train_v2",
+    target_policy: str = "visual",
+    emit_render_specs: bool = True,
+    audit_strict: bool = True,
+    style_holdout: Iterable[str] | str | None = None,
+    degradation_holdout: Iterable[str] | str | None = None,
+    annotation_holdout: Iterable[str] | str | None = None,
 ) -> dict[str, Any]:
     """Generate a dataset of timing Image-DSL pairs and write records.jsonl."""
 
@@ -162,16 +179,26 @@ def generate_dataset(
         raise ValueError("holdout_size must be one of small, medium, large")
     if holdout_rendering is not None and holdout_rendering not in _RENDERING_MODES:
         raise ValueError("holdout_rendering must be one of concrete, symbolic, mixed")
+    if render_profile is not None:
+        profile_by_id(render_profile)
+    else:
+        profile_set_by_id(render_profile_set)
+    target_policy_from_name(target_policy)
     required_coverage = _parse_coverage_required(coverage_required)
+    style_holdout_values = _parse_csv_values(style_holdout)
+    degradation_holdout_values = _parse_csv_values(degradation_holdout)
+    annotation_holdout_values = _parse_csv_values(annotation_holdout)
 
     rng = GenerationRng(seed)
     output_path = Path(out_dir)
     (output_path / "dsl").mkdir(parents=True, exist_ok=True)
+    (output_path / "semantic").mkdir(parents=True, exist_ok=True)
+    (output_path / "png").mkdir(parents=True, exist_ok=True)
+    (output_path / "audits").mkdir(parents=True, exist_ok=True)
+    if emit_render_specs:
+        (output_path / "render_specs").mkdir(parents=True, exist_ok=True)
     if render_svg:
         (output_path / "svg").mkdir(parents=True, exist_ok=True)
-    if render_png:
-        _probe_png_renderer()
-        (output_path / "png").mkdir(parents=True, exist_ok=True)
 
     available_topologies = tuple(t for t in TOPOLOGIES if t != holdout_topology)
     available_flavors = tuple(f for f in FLAVORS if f != holdout_flavor)
@@ -190,6 +217,7 @@ def generate_dataset(
     rendering_counts = {mode: 0 for mode in _RENDERING_MODES}
 
     coverage = CoverageTracker()
+    visual_coverage = VisualCoverageTracker()
     accepted_records: list[dict[str, Any]] = []
     seen_canonical_hashes: set[str] = set()
     seen_svg_hashes: set[str] = set()
@@ -253,6 +281,9 @@ def generate_dataset(
                     continue
 
                 item_rendering = item.features.get("rendering", spec.rendering)
+                if item.features.get("topology") == "join" and str(item_rendering) != "concrete":
+                    _bump(rejection_counts, "join_requires_concrete_samples")
+                    continue
                 if _rendering_mode_over_quota(str(item_rendering), rendering_counts, rendering_quotas):
                     _bump(rejection_counts, "rendering_mode_quota")
                     continue
@@ -273,17 +304,58 @@ def generate_dataset(
                     _bump(rejection_counts, "duplicate_svg")
                     continue
 
+                rendered_item: DatasetRenderRecord | None = None
+                if render_svg or render_png:
+                    try:
+                        semantic_document = parse_diagram(item.canonical_dsl)
+                        if _semantic_document_matches_features(semantic_document, item.features):
+                            render_rng = rng.derive_child(f"pipeline:{item_index}:{attempt}")
+                            rendered_item = generate_one_record(
+                                item_id=item.id,
+                                seed=item.seed,
+                                semantic_document=semantic_document,
+                                rng=render_rng,
+                                render_profile=render_profile,
+                                render_profile_set=render_profile_set,
+                                target_policy=target_policy,
+                                audit_strict=audit_strict,
+                                style_holdout=style_holdout_values,
+                                degradation_holdout=degradation_holdout_values,
+                                annotation_holdout=annotation_holdout_values,
+                            )
+                    except GenerationError as exc:
+                        _bump(rejection_counts, exc.reason)
+                        continue
+                    except Exception as exc:
+                        _bump(rejection_counts, f"unexpected_{exc.__class__.__name__}")
+                        continue
+
                 seen_canonical_hashes.add(canonical_hash)
                 if render_svg:
                     seen_svg_hashes.add(svg_hash)
                     seen_svg_feature_pairs.add((svg_hash, feature_signature))
                 seen_feature_signatures.add(feature_signature)
-                record = _persist_item(item, spec, output_path, render_svg=render_svg, render_png=render_png, split=split)
+                if rendered_item is None:
+                    record = _persist_item(item, spec, output_path, render_svg=render_svg, render_png=render_png, split=split)
+                else:
+                    record = _persist_rendered_item(
+                        item,
+                        spec,
+                        rendered_item,
+                        output_path,
+                        render_svg=render_svg,
+                        render_png=render_png,
+                        split=split,
+                        emit_render_specs=emit_render_specs,
+                        target_policy=target_policy,
+                    )
                 records_handle.write(json.dumps(record))
                 records_handle.write("\n")
                 records_handle.flush()
                 accepted_records.append(record)
                 coverage.update(item.features)
+                if rendered_item is not None:
+                    visual_coverage.update(rendered_item.spec, rendered_item.outcome, rendered_item.scene)
                 rendering_counts[str(item_rendering)] = rendering_counts.get(str(item_rendering), 0) + 1
                 accepted = True
                 break
@@ -315,6 +387,17 @@ def generate_dataset(
             for bucket in sorted(coverage.deficient_buckets(coverage_target))
         }
 
+    semantic_coverage = {bucket: dict(values) for bucket, values in coverage.counts.items()}
+    visual_coverage_payload = {
+        bucket: dict(values)
+        for bucket, values in visual_coverage.to_dict().items()
+    }
+    coverage_payload: dict[str, Any] = {
+        **semantic_coverage,
+        "semantic": semantic_coverage,
+        "visual": visual_coverage_payload,
+    }
+    split_plan_name = split if split in SPLIT_PLANS else render_profile_set
     summary = {
         "count": len(accepted_records),
         "seed": seed,
@@ -323,8 +406,13 @@ def generate_dataset(
         "out_dir": str(output_path),
         "records_path": str(records_path),
         "summary_path": str(output_path / "summary.json"),
-        "coverage": {bucket: dict(values) for bucket, values in coverage.counts.items()},
+        "coverage": coverage_payload,
         "rejections": rejection_counts,
+        "rejection_reasons": rejection_counts,
+        "profile_set": render_profile or render_profile_set,
+        "split_plan": split_plan_name,
+        "audits_strict": audit_strict,
+        "target_policy": target_policy,
     }
     if coverage_target_unmet:
         summary["coverage_target_unmet"] = coverage_target_unmet
@@ -903,6 +991,18 @@ def _feature_signature(features: dict[str, Any]) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
+def _semantic_document_matches_features(document: ScenarioDocument, features: dict[str, Any]) -> bool:
+    """Return whether a parsed document looks like the generated semantic item."""
+
+    lane_count = features.get("lane_count")
+    if isinstance(lane_count, int) and lane_count != len(document.signals):
+        return False
+    ticks = features.get("ticks")
+    if isinstance(ticks, int) and document.ticks is not None and ticks != document.ticks:
+        return False
+    return True
+
+
 def _extract_features(document: ScenarioDocument, spec: GenerationSpec) -> dict[str, Any]:
     bus_lanes = [signal for signal in document.signals if signal.kind == SignalKind.BUS]
     bit_lanes = [signal for signal in document.signals if signal.kind == SignalKind.BIT]
@@ -1015,3 +1115,76 @@ def _persist_item(
     if png_relative:
         record["png_path"] = png_relative
     return record
+
+
+def _persist_rendered_item(
+    item: GeneratedItem,
+    spec: GenerationSpec,
+    rendered: DatasetRenderRecord,
+    out_dir: Path,
+    *,
+    render_svg: bool,
+    render_png: bool,
+    split: str,
+    emit_render_specs: bool,
+    target_policy: str,
+) -> dict[str, Any]:
+    del render_png
+    dsl_relative = f"dsl/{item.id}.td"
+    semantic_relative = f"semantic/{item.id}.td"
+    (out_dir / dsl_relative).write_text(rendered.visual_dsl + "\n", encoding="utf-8")
+    (out_dir / semantic_relative).write_text(rendered.semantic_dsl + "\n", encoding="utf-8")
+
+    svg_relative: str | None = None
+    svg_text = item.svg_text or rendered.outcome.result.svg_text
+    if render_svg and svg_text:
+        svg_relative = f"svg/{item.id}.svg"
+        (out_dir / svg_relative).write_text(svg_text, encoding="utf-8")
+
+    image_extension = "jpg" if rendered.composed.image_format == "jpeg" else rendered.composed.image_format
+    image_relative = f"{image_extension}/{item.id}.{image_extension}"
+    (out_dir / image_extension).mkdir(parents=True, exist_ok=True)
+    (out_dir / image_relative).write_bytes(rendered.composed.image_bytes)
+
+    render_spec_relative: str | None = None
+    if emit_render_specs:
+        render_spec_relative = f"render_specs/{item.id}.json"
+        (out_dir / render_spec_relative).write_text(
+            json.dumps(rendered.render_spec_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    audits_relative = f"audits/{item.id}.json"
+    (out_dir / audits_relative).write_text(
+        json.dumps(rendered.audits_payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    return {
+        "id": item.id,
+        "seed": item.seed,
+        "split": split,
+        "dsl_path": dsl_relative,
+        "semantic_dsl_path": semantic_relative,
+        "image_path": image_relative,
+        "png_path": image_relative if image_extension == "png" else None,
+        "svg_path": svg_relative,
+        "render_spec_path": render_spec_relative,
+        "audits_path": audits_relative,
+        "renderer_id": rendered.spec.renderer_id,
+        "profile": rendered.spec.profile,
+        "style_family": rendered.spec.style.family,
+        "annotation_policy": rendered.spec.annotations.policy.value,
+        "degradation_profile": rendered.spec.degradation.family,
+        "target": {
+            "canonical_dsl": item.canonical_dsl,
+            "visual_canonical_dsl": rendered.visual_dsl,
+            "policy": target_policy,
+            "recoverability": _RECOVERABILITY.get(str(item.features.get("rendering", spec.rendering)), "visual"),
+        },
+        "features": item.features,
+        "visual_features": rendered.visual_features,
+        "visibility": rendered.visibility,
+        "difficulty": rendered.difficulty,
+        "audit_status": rendered.audit_status,
+    }

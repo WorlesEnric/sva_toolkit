@@ -178,6 +178,51 @@ def _extract_sva_documents(input_file: str, *, depth: int, timeout: int):
     return bundled_documents, merge_extraction_reports(report, bundle_report)
 
 
+def _render_timing_with_profile(diagram: Any, *, render_profile: str, seed: int, audit_strict: bool) -> dict[str, Any]:
+    import random
+
+    from sva_toolkit.timing.bridge.to_dsl import emit_timing_dsl
+    from sva_toolkit.timing.generate.render_pipeline import profile_by_id
+    from sva_toolkit.timing.render2.audit.layout_overflow import audit_layout_overflow
+    from sva_toolkit.timing.render2.audit.reproducibility import audit_renderer_reproducibility
+    from sva_toolkit.timing.render2.compose import compose_record
+    from sva_toolkit.timing.render2.pipeline import render
+    from sva_toolkit.timing.render2.protocol import DEFAULT_REGISTRY
+    from sva_toolkit.timing.render2.scene_builder import build_timing_scene
+    from sva_toolkit.timing.render2.spec_sampler import sample_render_spec
+    from sva_toolkit.timing.visual import lower_to_visual_document
+
+    rng = random.Random(seed)
+    profile = profile_by_id(render_profile)
+    lowering = lower_to_visual_document(diagram)
+    visual_document = lowering.visual_document
+    scene = build_timing_scene(visual_document, semantic_document=diagram)
+    spec = sample_render_spec(rng, profile=profile, scene=scene)
+    try:
+        renderer = DEFAULT_REGISTRY.get(spec.renderer_id)
+    except KeyError as exc:
+        raise click.ClickException(f"renderer unavailable: {spec.renderer_id}") from exc
+    if not renderer.supports(scene, spec):
+        raise click.ClickException(f"renderer {spec.renderer_id!r} does not support this scene/spec")
+
+    outcome = render(scene, spec, target_dsl_text=emit_timing_dsl(visual_document), enforce_audits=audit_strict)
+    if audit_strict and not outcome.audits_passed:
+        raise click.ClickException(f"render audit failed: {outcome.rejection_reason}")
+    overflow = audit_layout_overflow(scene, outcome.result)
+    if audit_strict and not overflow.passed:
+        raise click.ClickException("render audit failed: layout_overflow")
+    reproducibility = audit_renderer_reproducibility(renderer, scene, spec)
+    if audit_strict and not reproducibility.passed:
+        raise click.ClickException(f"render audit failed: {reproducibility.reason}")
+
+    composed = compose_record(scene, spec, outcome.result, rng=rng)
+    return {
+        "svg_text": outcome.result.svg_text,
+        "image_bytes": composed.image_bytes,
+        "image_format": composed.image_format,
+    }
+
+
 def _build_dataset_builder(model: str | None, workers: int):
     from sva_toolkit.data import DatasetBuilder
 
@@ -294,19 +339,45 @@ def formal_relationship(sva1: str, sva2: str, backend: str, timeout: int, depth:
 @click.argument("input_file", type=click.Path(exists=True, dir_okay=False))
 @click.option("-o", "--output", type=click.Path(dir_okay=False))
 @click.option("--format", "output_format", type=click.Choice(["svg", "png"]), default="svg", show_default=True)
-def timing_render(input_file: str, output: str | None, output_format: str) -> None:
+@click.option("--render-profile", default="debug-current", show_default=True, help="render2 profile id to use.")
+@click.option("--seed", type=int, default=0, show_default=True, help="Seed for render2 profile sampling.")
+@click.option(
+    "--audit-strict/--no-audit-strict",
+    default=False,
+    show_default=True,
+    help="Fail when render2 audits report target leakage or visibility problems.",
+)
+def timing_render(
+    input_file: str,
+    output: str | None,
+    output_format: str,
+    render_profile: str,
+    seed: int,
+    audit_strict: bool,
+) -> None:
     """Render a timing diagram file to SVG or PNG."""
     from sva_toolkit.timing.frontend.parser import parse_diagram
-    from sva_toolkit.timing.render import render_diagram_png, render_diagram_svg
 
     if output_format == "png" and output is None:
         raise click.ClickException("--output is required when --format=png")
 
     diagram = parse_diagram(Path(input_file).read_text(encoding="utf-8"))
-    if output_format == "png":
+    parameter_source = click.get_current_context().get_parameter_source("render_profile")
+    render_profile_explicit = parameter_source is not click.core.ParameterSource.DEFAULT
+    if output_format == "png" and render_profile == "debug-current" and not render_profile_explicit:
+        from sva_toolkit.timing.render import render_diagram_png
+
         render_diagram_png(diagram, Path(output))
         return
-    _write_text_output(output, render_diagram_svg(diagram))
+
+    rendered = _render_timing_with_profile(diagram, render_profile=render_profile, seed=seed, audit_strict=audit_strict)
+    if output_format == "png":
+        Path(output).write_bytes(rendered["image_bytes"])
+        return
+    svg_text = rendered["svg_text"]
+    if not isinstance(svg_text, str) or not svg_text:
+        raise click.ClickException(f"render profile {render_profile!r} did not produce SVG output")
+    _write_text_output(output, svg_text)
 
 
 @timing.command("validate")
@@ -375,6 +446,14 @@ def timing_extract_sva(input_file: str, output: str | None, depth: int, timeout:
 @click.option("--cuts-probability", type=float, default=0.3, show_default=True)
 @click.option("--distractor-probability", type=float, default=0.3, show_default=True)
 @click.option("--format", "output_format", type=click.Choice(["svg", "png", "both", "none"]), default="svg", show_default=True, help="Image format(s) to render alongside DSL.")
+@click.option("--render-profile-set", default="train_v2", show_default=True, help="Weighted render2 profile set.")
+@click.option("--render-profile", default=None, help="Pin one render2 profile for every record.")
+@click.option("--target-policy", type=click.Choice(["visual", "debug_keep_all"]), default="visual", show_default=True)
+@click.option("--emit-render-specs/--no-emit-render-specs", default=True, show_default=True)
+@click.option("--audit-strict/--no-audit-strict", default=True, show_default=True)
+@click.option("--style-holdout", default="", help="CSV of style/profile ids to reject from the active profile set.")
+@click.option("--degradation-holdout", default="", help="CSV of degradation families to reject.")
+@click.option("--annotation-holdout", default="", help="CSV of annotation policies to reject.")
 @click.option("--summary-json", type=click.Path(dir_okay=False), default=None, help="Optional path for the run summary JSON.")
 def timing_generate_dataset(
     count: int,
@@ -400,6 +479,14 @@ def timing_generate_dataset(
     cuts_probability: float,
     distractor_probability: float,
     output_format: str,
+    render_profile_set: str,
+    render_profile: str | None,
+    target_policy: str,
+    emit_render_specs: bool,
+    audit_strict: bool,
+    style_holdout: str,
+    degradation_holdout: str,
+    annotation_holdout: str,
     summary_json: str | None,
 ) -> None:
     """Generate a procedural Image-DSL dataset for the timing diagram DSL."""
@@ -407,6 +494,8 @@ def timing_generate_dataset(
 
     render_svg = output_format in {"svg", "both"}
     render_png = output_format in {"png", "both"}
+    if render_profile and render_profile_set != "train_v2":
+        raise click.ClickException("--render-profile is mutually exclusive with --render-profile-set")
 
     try:
         summary = generate_dataset(
@@ -434,6 +523,14 @@ def timing_generate_dataset(
             render_png=render_png,
             cuts_probability=cuts_probability,
             distractor_probability=distractor_probability,
+            render_profile=render_profile,
+            render_profile_set=render_profile_set,
+            target_policy=target_policy,
+            emit_render_specs=emit_render_specs,
+            audit_strict=audit_strict,
+            style_holdout=style_holdout,
+            degradation_holdout=degradation_holdout,
+            annotation_holdout=annotation_holdout,
         )
     except (GenerationError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
@@ -456,7 +553,8 @@ def timing_generate_dataset(
     show_default=True,
     help="Validate windows and constraints using first visible anchor occurrences.",
 )
-def timing_validate_dataset(dataset_dir: str, strict: bool, strict_first_occurrence: bool) -> None:
+@click.option("--strict-visual", is_flag=True, help="Validate render specs, audits, and visual coverage metadata.")
+def timing_validate_dataset(dataset_dir: str, strict: bool, strict_first_occurrence: bool, strict_visual: bool) -> None:
     """Validate a generated timing Image-DSL dataset."""
     from sva_toolkit.timing.generate.validate_dataset import (
         format_validation_summary,
@@ -465,7 +563,7 @@ def timing_validate_dataset(dataset_dir: str, strict: bool, strict_first_occurre
     )
 
     try:
-        result = validate_dataset(dataset_dir, strict=strict_first_occurrence)
+        result = validate_dataset(dataset_dir, strict=strict_first_occurrence, strict_visual=strict_visual)
     except (FileNotFoundError, OSError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
 
