@@ -109,18 +109,21 @@ def emit_bus_wave(lane: LaneScene, lane_index: int, geometry: NativeGeometry, st
                     z=63,
                 )
             )
-        if bus_style == "inline_text" and _can_print_bus_value(run.value):
-            primitives.append(
-                Text(
-                    role="bus_value_text",
-                    z=72,
-                    text=str(run.value),
-                    anchor=Point((x0 + x1) / 2, geometry.lane_center_y(lane_index) + font.size_px * 0.35),
-                    font=font,
-                    text_anchor="middle",
-                    visibility_class=VisibilityClass.VISIBLE_TEXT.value,
+        if _can_print_bus_value(run.value):
+            run_width = max(0.0, x1 - x0)
+            value_text = _fit_bus_label(str(run.value), run_width, font)
+            if value_text:
+                primitives.append(
+                    Text(
+                        role="bus_value_text",
+                        z=72,
+                        text=value_text,
+                        anchor=Point((x0 + x1) / 2, geometry.lane_center_y(lane_index) + font.size_px * 0.35),
+                        font=font,
+                        text_anchor="middle",
+                        visibility_class=VisibilityClass.VISIBLE_TEXT.value,
+                    )
                 )
-            )
 
     return tuple(primitives)
 
@@ -369,6 +372,35 @@ def _normalized_value(run: SampleRun) -> str:
 def _can_print_bus_value(value: str) -> bool:
     normalized = str(value).strip().lower()
     return bool(normalized) and normalized not in {"x", "z", "?", "unknown", "highz"}
+
+
+def _fit_bus_label(value: str, run_width: float, font: FontSpec) -> str:
+    """Return the largest prefix of ``value`` that fits in ``run_width``.
+
+    Bus envelopes shorter than a single character get an empty string back so
+    the caller can skip the Text primitive entirely. Long bus labels in tight
+    runs are truncated with a trailing ``…`` so the model still recovers a
+    distinguishing prefix.
+    """
+
+    from sva_toolkit.timing.render2.native.text_metrics import estimate_text_width
+
+    text = str(value)
+    if not text:
+        return ""
+    padding = max(2.0, font.size_px * 0.4)
+    available = max(0.0, run_width - padding)
+    if available <= 0.0:
+        return ""
+    if estimate_text_width(text, font) <= available:
+        return text
+    if estimate_text_width("…", font) > available:
+        return ""
+    for cut in range(len(text) - 1, 0, -1):
+        candidate = f"{text[:cut]}…"
+        if estimate_text_width(candidate, font) <= available:
+            return candidate
+    return ""
 
 
 def _palette(style: StyleSpec) -> dict[str, str]:
